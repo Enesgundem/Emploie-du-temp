@@ -20,7 +20,9 @@
     events: [],
     currentMonday: null,
     activeCategories: new Set(['all', 'cours', 'alternance', 'travail', 'sport', 'medical', 'perso', 'pause']),
-    selectedEvent: null
+    selectedEvent: null,
+    viewMode: window.innerWidth <= 768 ? 'day' : 'week',
+    selectedDayIndex: 0
   };
 
   // Noms des mois et jours en français
@@ -43,6 +45,7 @@
     startLiveClock();
     updateNextEventWidget();
     updateLiveTimeIndicator();
+    setViewMode(state.viewMode);
   }
 
   // Gestion des Thèmes (Sombre / Clair)
@@ -108,6 +111,8 @@
     // Utiliser la date système locale (actuellement 2026-09-07)
     const now = new Date();
     state.currentMonday = getMonday(now);
+    const day = now.getDay();
+    state.selectedDayIndex = (day === 0 ? 6 : day - 1);
   }
 
   function getMonday(d) {
@@ -204,6 +209,7 @@
       const dayDate = addDays(state.currentMonday, i);
       const headerEl = document.getElementById(`headerDay${i}`);
       const dayColEl = document.getElementById(`dayCol${i}`);
+      const tabEl = document.getElementById(`mTab${i}`);
 
       if (headerEl) {
         const nameEl = headerEl.querySelector('.day-name');
@@ -224,6 +230,100 @@
         } else {
           dayColEl.classList.remove('today-col');
         }
+      }
+
+      // Mise à jour de l'onglet mobile
+      if (tabEl) {
+        const tabNumEl = tabEl.querySelector('.m-day-num');
+        if (tabNumEl) tabNumEl.textContent = dayDate.getDate();
+        if (i === todayIndex) {
+          tabEl.classList.add('is-today');
+        } else {
+          tabEl.classList.remove('is-today');
+        }
+      }
+    }
+
+    updateDayColumnsVisibility();
+  }
+
+  /* ==========================================================================
+     GESTION DU MODE D'AFFICHAGE (JOUR / SEMAINE) & NAVIGATION MOBILE
+     ========================================================================== */
+  function setViewMode(mode) {
+    state.viewMode = mode;
+    const dayBtn = document.getElementById('viewModeDayBtn');
+    const weekBtn = document.getElementById('viewModeWeekBtn');
+    const container = document.getElementById('scheduleContainer');
+    const daySelector = document.getElementById('mobileDaySelector');
+
+    if (dayBtn && weekBtn) {
+      dayBtn.classList.toggle('active', mode === 'day');
+      weekBtn.classList.toggle('active', mode === 'week');
+    }
+
+    if (container) {
+      container.classList.toggle('view-mode-day', mode === 'day');
+      container.classList.toggle('view-mode-week', mode === 'week');
+    }
+
+    if (daySelector) {
+      daySelector.style.display = (mode === 'day' || window.innerWidth <= 768) ? 'grid' : 'none';
+    }
+
+    updateDayColumnsVisibility();
+    updateLiveTimeIndicator();
+  }
+
+  function selectDay(dayIndex) {
+    state.selectedDayIndex = Math.max(0, Math.min(6, dayIndex));
+    updateDayColumnsVisibility();
+    updateLiveTimeIndicator();
+  }
+
+  function goToNextDay() {
+    if (state.selectedDayIndex < 6) {
+      selectDay(state.selectedDayIndex + 1);
+    } else {
+      state.currentMonday = addDays(state.currentMonday, 7);
+      state.selectedDayIndex = 0;
+      render();
+    }
+  }
+
+  function goToPrevDay() {
+    if (state.selectedDayIndex > 0) {
+      selectDay(state.selectedDayIndex - 1);
+    } else {
+      state.currentMonday = addDays(state.currentMonday, -7);
+      state.selectedDayIndex = 6;
+      render();
+    }
+  }
+
+  function updateDayColumnsVisibility() {
+    const isDayMode = (state.viewMode === 'day');
+    const container = document.getElementById('scheduleContainer');
+    if (container) {
+      container.classList.toggle('view-mode-day', isDayMode);
+      container.classList.toggle('view-mode-week', !isDayMode);
+    }
+
+    for (let i = 0; i < 7; i++) {
+      const headerEl = document.getElementById(`headerDay${i}`);
+      const dayColEl = document.getElementById(`dayCol${i}`);
+      const tabEl = document.getElementById(`mTab${i}`);
+
+      const isActive = (i === state.selectedDayIndex);
+
+      if (headerEl) {
+        headerEl.classList.toggle('active-day', isActive);
+      }
+      if (dayColEl) {
+        dayColEl.classList.toggle('active-col', isActive);
+      }
+      if (tabEl) {
+        tabEl.classList.toggle('active', isActive);
       }
     }
   }
@@ -615,13 +715,24 @@
     }
 
     const topPx = ((currentMinutes - gridStartMinutes) / 60) * HOUR_HEIGHT;
-    const colWidthPct = 100 / 7;
-    const leftPct = dayIndex * colWidthPct;
 
-    line.style.display = 'block';
-    line.style.top = `${topPx}px`;
-    line.style.left = `${leftPct}%`;
-    line.style.width = `${colWidthPct}%`;
+    if (state.viewMode === 'day') {
+      if (dayIndex !== state.selectedDayIndex) {
+        line.style.display = 'none';
+        return;
+      }
+      line.style.display = 'block';
+      line.style.top = `${topPx}px`;
+      line.style.left = '0%';
+      line.style.width = '100%';
+    } else {
+      const colWidthPct = 100 / 7;
+      const leftPct = dayIndex * colWidthPct;
+      line.style.display = 'block';
+      line.style.top = `${topPx}px`;
+      line.style.left = `${leftPct}%`;
+      line.style.width = `${colWidthPct}%`;
+    }
 
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
@@ -1004,20 +1115,92 @@
      BINDING DES ÉVÉNEMENTS
      ========================================================================== */
   function bindEvents() {
-    // Navigation des semaines
+    // Navigation des semaines et jours
     document.getElementById('prevWeekBtn')?.addEventListener('click', () => {
-      state.currentMonday = addDays(state.currentMonday, -7);
-      render();
+      if (state.viewMode === 'day') {
+        goToPrevDay();
+      } else {
+        state.currentMonday = addDays(state.currentMonday, -7);
+        render();
+      }
     });
 
     document.getElementById('nextWeekBtn')?.addEventListener('click', () => {
-      state.currentMonday = addDays(state.currentMonday, 7);
-      render();
+      if (state.viewMode === 'day') {
+        goToNextDay();
+      } else {
+        state.currentMonday = addDays(state.currentMonday, 7);
+        render();
+      }
     });
 
     document.getElementById('todayBtn')?.addEventListener('click', () => {
-      state.currentMonday = getMonday(new Date());
+      const now = new Date();
+      state.currentMonday = getMonday(now);
+      const day = now.getDay();
+      state.selectedDayIndex = (day === 0 ? 6 : day - 1);
       render();
+      updateDayColumnsVisibility();
+    });
+
+    // Bascule Mode Jour / Semaine
+    document.getElementById('viewModeDayBtn')?.addEventListener('click', () => setViewMode('day'));
+    document.getElementById('viewModeWeekBtn')?.addEventListener('click', () => setViewMode('week'));
+
+    // Onglets de jours pour Smartphone
+    for (let i = 0; i < 7; i++) {
+      document.getElementById(`mTab${i}`)?.addEventListener('click', () => {
+        selectDay(i);
+        if (state.viewMode !== 'day' && window.innerWidth <= 768) {
+          setViewMode('day');
+        }
+      });
+    }
+
+    // Bouton Flottant (FAB) Mobile
+    document.getElementById('mobileFabBtn')?.addEventListener('click', () => {
+      const targetDate = addDays(state.currentMonday, state.selectedDayIndex);
+      openAddModal(targetDate);
+    });
+
+    // Gestes tactiles Swipe Gauche / Droite (changement de jour)
+    const viewport = document.getElementById('scheduleViewport');
+    if (viewport) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      viewport.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length === 1) {
+          const diffX = e.changedTouches[0].clientX - touchStartX;
+          const diffY = e.changedTouches[0].clientY - touchStartY;
+
+          if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
+            if (state.viewMode === 'day') {
+              if (diffX < 0) {
+                goToNextDay();
+              } else {
+                goToPrevDay();
+              }
+            }
+          }
+        }
+      }, { passive: true });
+    }
+
+    // Gestion du redimensionnement d'écran
+    window.addEventListener('resize', () => {
+      const isMobile = window.innerWidth <= 768;
+      const daySelector = document.getElementById('mobileDaySelector');
+      if (daySelector) {
+        daySelector.style.display = (state.viewMode === 'day' || isMobile) ? 'grid' : 'none';
+      }
     });
 
     document.getElementById('dateJumpInput')?.addEventListener('change', (e) => {

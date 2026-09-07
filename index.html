@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mon Emploi du Temps | Planning Personnel & Universitaire</title>
   <meta name="description" content="Application moderne d'emploi du temps personnel avec intégration ADE iCalendar, travail week-end, volley-ball et gestion d'événements. Thème sombre et Vert Peugeot 308.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -95,18 +95,26 @@
     <section class="control-panel">
       <!-- Navigation de Semaine -->
       <div class="week-navigation">
-        <div class="nav-segmented-control">
-          <button type="button" class="btn-nav" id="prevWeekBtn" title="Semaine précédente">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-          <button type="button" class="btn-nav btn-today" id="todayBtn">Aujourd'hui</button>
-          <button type="button" class="btn-nav" id="nextWeekBtn" title="Semaine suivante">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
+        <div class="week-nav-top-row">
+          <div class="nav-segmented-control">
+            <button type="button" class="btn-nav" id="prevWeekBtn" title="Précédent">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button type="button" class="btn-nav btn-today" id="todayBtn">Aujourd'hui</button>
+            <button type="button" class="btn-nav" id="nextWeekBtn" title="Suivant">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Bascule Mode Vue Jour / Semaine -->
+          <div class="view-mode-toggle" id="viewModeToggle" aria-label="Mode d'affichage">
+            <button type="button" class="btn-view-mode" data-view="day" id="viewModeDayBtn">Jour</button>
+            <button type="button" class="btn-view-mode active" data-view="week" id="viewModeWeekBtn">Semaine</button>
+          </div>
         </div>
 
         <div class="current-week-display">
@@ -189,9 +197,41 @@
       </div>
     </div>
 
+    <!-- Sélecteur de jour pour smartphone (Mode Jour) -->
+    <div class="mobile-day-selector" id="mobileDaySelector" aria-label="Sélection du jour">
+      <button type="button" class="mobile-day-tab active" data-day-index="0" id="mTab0">
+        <span class="m-day-name">Lun</span>
+        <span class="m-day-num">7</span>
+      </button>
+      <button type="button" class="mobile-day-tab" data-day-index="1" id="mTab1">
+        <span class="m-day-name">Mar</span>
+        <span class="m-day-num">8</span>
+      </button>
+      <button type="button" class="mobile-day-tab" data-day-index="2" id="mTab2">
+        <span class="m-day-name">Mer</span>
+        <span class="m-day-num">9</span>
+      </button>
+      <button type="button" class="mobile-day-tab" data-day-index="3" id="mTab3">
+        <span class="m-day-name">Jeu</span>
+        <span class="m-day-num">10</span>
+      </button>
+      <button type="button" class="mobile-day-tab" data-day-index="4" id="mTab4">
+        <span class="m-day-name">Ven</span>
+        <span class="m-day-num">11</span>
+      </button>
+      <button type="button" class="mobile-day-tab weekend" data-day-index="5" id="mTab5">
+        <span class="m-day-name">Sam</span>
+        <span class="m-day-num">12</span>
+      </button>
+      <button type="button" class="mobile-day-tab weekend" data-day-index="6" id="mTab6">
+        <span class="m-day-name">Dim</span>
+        <span class="m-day-num">13</span>
+      </button>
+    </div>
+
     <!-- Main Schedule Grid Area -->
     <main class="schedule-viewport" id="scheduleViewport">
-      <div class="schedule-container" id="schedulePrintArea">
+      <div class="schedule-container" id="scheduleContainer">
         <!-- Sticky Days Header -->
         <div class="schedule-header-grid" id="daysHeaderGrid">
           <div class="time-axis-corner" title="Heures (Paris)">
@@ -580,6 +620,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Action Button pour Mobile -->
+  <button type="button" class="mobile-fab" id="mobileFabBtn" title="Ajouter un événement" aria-label="Ajouter un événement">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  </button>
 
   <!-- Toast Notification -->
   <div class="toast-container" id="toastContainer"></div>

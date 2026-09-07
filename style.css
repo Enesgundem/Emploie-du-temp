@@ -214,9 +214,44 @@
   color: #0f172a;
 }
 
-[data-theme="light"] .nav-segmented-control {
+[data-theme="light"] .nav-segmented-control,
+[data-theme="light"] .view-mode-toggle {
   background: #f1f5f9;
   border-color: #e2e8f0;
+}
+
+[data-theme="light"] .btn-view-mode {
+  color: #64748b;
+}
+
+[data-theme="light"] .btn-view-mode:hover {
+  color: #0f172a;
+}
+
+[data-theme="light"] .mobile-day-selector {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .mobile-day-tab {
+  background: #f8fafc;
+  color: #475569;
+}
+
+[data-theme="light"] .mobile-day-tab:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme="light"] .mobile-day-tab.active {
+  background: rgba(30, 86, 62, 0.1);
+  border-color: var(--p308-olive-accent);
+  color: #0e291a;
+}
+
+[data-theme="light"] .mobile-day-tab.active.is-today {
+  background: var(--p308-gradient-btn);
+  color: #ffffff;
 }
 
 [data-theme="light"] .date-picker-input {
@@ -740,6 +775,49 @@ html, body {
   flex-wrap: wrap;
 }
 
+.week-nav-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-mode-toggle {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-view-mode {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-view-mode:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.btn-view-mode.active {
+  background: var(--p308-gradient-btn);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
 .nav-segmented-control {
   display: flex;
   align-items: center;
@@ -944,6 +1022,103 @@ html, body {
 }
 
 /* ==========================================================================
+   MOBILE DAY SELECTOR (MODE JOUR SUR SMARTPHONE)
+   ========================================================================== */
+.mobile-day-selector {
+  display: none;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.mobile-day-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 2px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mobile-day-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.mobile-day-tab.active {
+  background: var(--p308-olive-subtle);
+  border-color: var(--p308-olive-accent);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(55, 124, 89, 0.25);
+}
+
+.mobile-day-tab.is-today .m-day-num {
+  color: var(--p308-olive-highlight);
+  font-weight: 700;
+}
+
+.mobile-day-tab.active.is-today {
+  background: var(--p308-gradient-btn);
+  color: #ffffff;
+}
+
+.mobile-day-tab.active.is-today .m-day-num {
+  color: #ffffff;
+}
+
+.mobile-day-tab.weekend {
+  opacity: 0.8;
+}
+
+.m-day-name {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.m-day-num {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+/* Floating Action Button pour Smartphone */
+.mobile-fab {
+  display: none;
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  right: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--p308-gradient-btn);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 16px rgba(55, 124, 89, 0.4);
+  cursor: pointer;
+  z-index: 900;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mobile-fab:active {
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
    SCHEDULE VIEWPORT & GRID SYSTEM
    ========================================================================== */
 .schedule-viewport {
@@ -954,6 +1129,7 @@ html, body {
   overflow-y: hidden;
   box-shadow: var(--shadow-sm);
   position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 
 .schedule-container {
@@ -961,6 +1137,54 @@ html, body {
   display: flex;
   flex-direction: column;
   position: relative;
+}
+
+/* Mode Jour (Smartphone & Tablette) */
+.schedule-container.view-mode-day {
+  min-width: 100% !important;
+}
+
+.schedule-container.view-mode-day .schedule-header-grid {
+  grid-template-columns: var(--time-col-width) 1fr;
+}
+
+.schedule-container.view-mode-day .day-header {
+  display: none !important;
+}
+
+.schedule-container.view-mode-day .day-header.active-day {
+  display: flex !important;
+  flex: 1;
+}
+
+.schedule-container.view-mode-day .day-columns-wrapper {
+  grid-template-columns: 1fr;
+}
+
+.schedule-container.view-mode-day .day-column {
+  display: none !important;
+}
+
+.schedule-container.view-mode-day .day-column.active-col {
+  display: block !important;
+  width: 100%;
+}
+
+.schedule-container.view-mode-day .event-title {
+  font-size: 12.5px;
+  -webkit-line-clamp: 3;
+}
+
+.schedule-container.view-mode-day .event-time-badge {
+  font-size: 11px;
+}
+
+.schedule-container.view-mode-day .event-category-tag {
+  font-size: 9.5px;
+}
+
+.schedule-container.view-mode-day .event-meta-row {
+  margin-top: 4px;
 }
 
 /* Header Grid with Day Names */
@@ -972,7 +1196,7 @@ html, body {
   border-bottom: 1px solid var(--border-medium);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 15;
 }
 
 .time-axis-corner {
@@ -981,7 +1205,10 @@ html, body {
   justify-content: center;
   color: var(--text-muted);
   border-right: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-surface-elevated);
+  position: sticky;
+  left: 0;
+  z-index: 20;
 }
 
 .day-header {
@@ -1052,8 +1279,12 @@ html, body {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-surface-elevated);
   user-select: none;
+  position: sticky;
+  left: 0;
+  z-index: 12;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.18);
 }
 
 .time-slot-label {
@@ -1821,31 +2052,417 @@ html, body {
 }
 
 /* ==========================================================================
-   RESPONSIVE DESIGN & PRINT
+   RESPONSIVE DESIGN STUDIO (OPTIMISATION SMARTPHONE & TABLETTE)
    ========================================================================== */
+
+/* Tablette & petits écrans (<= 900px) */
 @media (max-width: 900px) {
   .app-container {
-    padding: 12px;
+    padding: 14px;
+    gap: 12px;
   }
+  
   .app-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
+    gap: 10px;
   }
+  
+  .header-left {
+    width: 100%;
+  }
+
+  .header-center {
+    max-width: 100%;
+    width: 100%;
+  }
+
   .header-right {
     width: 100%;
-    justify-content: space-between;
   }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .form-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 }
 
+/* Smartphone & Écrans mobiles (<= 768px) */
+@media (max-width: 768px) {
+  /* Safe area pour iPhone & espacement bas pour le bouton flottant */
+  .app-container {
+    padding: 10px 10px calc(75px + env(safe-area-inset-bottom, 0px)) 10px;
+    gap: 10px;
+  }
+
+  /* Header compact */
+  .app-header {
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    gap: 8px;
+  }
+
+  .brand-eyebrow {
+    font-size: 9.5px;
+    gap: 4px;
+  }
+
+  .app-title {
+    font-size: 16px;
+    letter-spacing: -0.02em;
+  }
+
+  /* Capsule d'événement prochain & horloge */
+  .status-capsule {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .capsule-clock-group {
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .live-date {
+    font-size: 10.5px;
+  }
+
+  .capsule-divider {
+    display: none;
+  }
+
+  .capsule-next-group {
+    width: 100%;
+    font-size: 11px;
+    gap: 5px;
+  }
+
+  .capsule-next-title {
+    font-size: 11px;
+  }
+
+  /* Boutons d'actions header */
+  .header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 6px;
+  }
+
+  .header-actions .btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+  }
+
+  /* Panneau de contrôle & navigation */
+  .control-panel {
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: var(--radius-sm);
+  }
+
+  .week-navigation {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .week-nav-top-row {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .btn-nav {
+    padding: 5px 8px;
+  }
+
+  .btn-today {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  .btn-view-mode {
+    padding: 4px 9px;
+    font-size: 11px;
+  }
+
+  .current-week-display {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .week-heading {
+    font-size: 12.5px;
+  }
+
+  .week-badge {
+    font-size: 10px;
+    padding: 1px 5px;
+  }
+
+  .date-picker-wrap {
+    display: none;
+  }
+
+  /* Filtres de catégories en carrousel tactile horizontal */
+  .categories-filter-bar {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 2px 0 4px 0;
+    gap: 5px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .categories-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chip {
+    flex-shrink: 0;
+    padding: 4px 9px;
+    font-size: 11px;
+  }
+
+  /* Ruban de métriques en défilement horizontal */
+  .metrics-ribbon {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 6px 10px;
+    gap: 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+  }
+
+  .metrics-ribbon::-webkit-scrollbar {
+    display: none;
+  }
+
+  .metric-item {
+    flex-shrink: 0;
+  }
+
+  .metric-label {
+    font-size: 10.5px;
+  }
+
+  .metric-val {
+    font-size: 11.5px;
+  }
+
+  .metric-notice {
+    display: none;
+  }
+
+  /* Sélecteur de jour pour Smartphone */
+  .mobile-day-selector {
+    display: grid;
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    gap: 3px;
+  }
+
+  .mobile-day-tab {
+    padding: 6px 2px;
+  }
+
+  .m-day-name {
+    font-size: 9.5px;
+  }
+
+  .m-day-num {
+    font-size: 13px;
+  }
+
+  /* Bouton Flottant (FAB) */
+  .mobile-fab {
+    display: flex;
+  }
+
+  /* Grille & Dimensions pour mobile */
+  :root {
+    --time-col-width: 50px;
+    --hour-height: 60px;
+    --header-height: 44px;
+  }
+
+  .time-slot-label {
+    font-size: 9.5px;
+    padding-top: 3px;
+  }
+
+  .day-name {
+    font-size: 11.5px;
+  }
+
+  .day-number {
+    font-size: 12.5px;
+    width: 23px;
+    height: 23px;
+  }
+
+  /* Cartes d'événements sur mobile */
+  .event-card {
+    padding: 4px 6px;
+    border-left-width: 3.5px;
+  }
+
+  .event-title {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .event-time-badge {
+    font-size: 9.5px;
+  }
+
+  .event-category-tag {
+    font-size: 8.5px;
+    padding: 0.5px 3px;
+  }
+
+  .event-location-pill {
+    font-size: 8.5px;
+    padding: 0.5px 3px;
+  }
+
+  .event-teacher {
+    font-size: 9px;
+  }
+
+  /* Modales Responsive Smartphone */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    width: 100%;
+    max-width: 100%;
+    max-height: 88vh;
+    border-radius: 18px 18px 0 0;
+    margin: 0;
+  }
+
+  .modal-header {
+    padding: 12px 16px;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .form-row .form-group:first-child {
+    grid-column: 1 / -1;
+  }
+
+  /* Empêche le zoom automatique forcé d'iOS Safari (>= 16px) */
+  .form-input, .form-textarea, select, .date-picker-input {
+    font-size: 16px !important;
+    padding: 9px 12px;
+  }
+
+  .category-radio-group {
+    gap: 5px;
+  }
+
+  .radio-custom {
+    padding: 6px 10px;
+    font-size: 11.5px;
+  }
+
+  .modal-footer {
+    padding-top: 10px;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 12px;
+    min-height: 42px;
+  }
+
+  /* Modale de détails */
+  .detail-event-title {
+    font-size: 15px;
+  }
+
+  .detail-info-grid {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .detail-val {
+    font-size: 12px;
+  }
+
+  /* Modale d'import */
+  .drop-zone {
+    padding: 18px 12px;
+  }
+
+  .drop-zone h4 {
+    font-size: 13px;
+  }
+
+  /* Footer */
+  .app-footer {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 8px 12px;
+    text-align: center;
+  }
+}
+
+/* Petits smartphones (iPhone SE, Galaxy A, etc. <= 400px) */
+@media (max-width: 400px) {
+  .header-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .header-actions .btn-icon {
+    width: 100%;
+  }
+
+  .mobile-day-tab {
+    padding: 5px 1px;
+  }
+
+  .m-day-name {
+    font-size: 9px;
+  }
+
+  .m-day-num {
+    font-size: 12px;
+  }
+}
+
+/* Impression / Export PDF */
 @media print {
   body {
     background: #ffffff !important;
     color: #000000 !important;
   }
-  .glow-orb, .app-header, .control-panel, .app-footer, .modal-overlay, .toast-container {
+  .glow-orb, .app-header, .control-panel, .app-footer, .modal-overlay, .toast-container, .mobile-day-selector, .mobile-fab {
     display: none !important;
   }
   .schedule-viewport {
@@ -1855,6 +2472,12 @@ html, body {
   }
   .schedule-container {
     min-width: 100% !important;
+  }
+  .day-column {
+    display: block !important;
+  }
+  .day-header {
+    display: flex !important;
   }
   .event-card {
     border: 1px solid #333 !important;
