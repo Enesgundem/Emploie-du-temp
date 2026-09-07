@@ -1,3 +1,6 @@
 {
+  "framework": null,
+  "buildCommand": null,
+  "devCommand": null,
   "cleanUrls": true
 }

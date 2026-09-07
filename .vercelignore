@@ -1,4 +1,2 @@
-local-server.js
-server.js
-lancer-mon-emploi-du-temps.bat
 scripts/
+*.bat
