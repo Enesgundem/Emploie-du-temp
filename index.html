@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon Emploi du Temps | Planning Personnel & Universitaire</title>
+  <meta name="description" content="Application moderne d'emploi du temps personnel avec intégration ADE iCalendar, travail week-end, volley-ball et gestion d'événements. Thème sombre et Vert Peugeot 308.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- html2canvas for instant high quality image export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb5hBydNyttFZ8679V0RNdrYVELElY7702CMO10PEGYgGuUNfe462eaG8fPAChmdXfl5uwA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Studio Haut de Gamme & Minimaliste -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-eyebrow">
+          <span class="brand-badge">MMI 3</span>
+          <span class="brand-sep">•</span>
+          <span class="brand-meta">Alternance & Université</span>
+        </div>
+        <h1 class="app-title">Mon Emploi du Temps</h1>
+      </div>
+
+      <!-- Capsule Live & Prochain Événement -->
+      <div class="header-center">
+        <div class="status-capsule" id="nextEventCard">
+          <div class="capsule-clock-group">
+            <span class="live-pulse-dot"></span>
+            <span class="live-clock" id="liveClock">18:45:00</span>
+            <span class="capsule-sep">•</span>
+            <span class="live-date" id="liveDate">Lundi 7 sept. 2026</span>
+          </div>
+          <div class="capsule-divider"></div>
+          <div class="capsule-next-group" id="nextEventContent">
+            <span class="capsule-next-label">Prochain</span>
+            <span class="capsule-next-title" id="nextEventTitle">Chargement...</span>
+            <span class="capsule-countdown-badge" id="nextEventCountdown">--:--</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Boutons d'actions principaux -->
+        <div class="header-actions">
+          <button type="button" class="btn btn-primary" id="openAddModalBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Événement</span>
+          </button>
+
+          <button type="button" class="btn btn-secondary" id="openImportModalBtn" title="Importer ou actualiser le calendrier (.ics)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Importer .ics</span>
+          </button>
+
+          <button type="button" class="btn btn-icon theme-toggle-btn" id="themeToggleBtn" title="Basculer Thème Clair / Sombre" aria-label="Thème">
+            <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+
+          <button type="button" class="btn btn-icon" id="exportScheduleBtn" title="Exporter l'agenda" aria-label="Exporter">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Ruban de Métriques & Navigation Hebdomadaire -->
+    <section class="control-panel">
+      <!-- Navigation de Semaine -->
+      <div class="week-navigation">
+        <div class="nav-segmented-control">
+          <button type="button" class="btn-nav" id="prevWeekBtn" title="Semaine précédente">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <button type="button" class="btn-nav btn-today" id="todayBtn">Aujourd'hui</button>
+          <button type="button" class="btn-nav" id="nextWeekBtn" title="Semaine suivante">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <div class="current-week-display">
+          <h2 class="week-heading" id="currentWeekTitle">Semaine du 7 au 13 septembre 2026</h2>
+          <span class="week-badge" id="weekNumberBadge">S37</span>
+        </div>
+
+        <div class="date-picker-wrap">
+          <input type="date" id="dateJumpInput" class="date-picker-input" value="2026-09-07" title="Sauter à une date">
+        </div>
+      </div>
+
+      <!-- Filtres par Catégories Discrets -->
+      <div class="categories-filter-bar">
+        <button type="button" class="filter-chip active" data-category="all" id="filterAll">
+          <span class="chip-dot dot-all"></span> Tous
+        </button>
+        <button type="button" class="filter-chip active" data-category="cours" id="filterCours">
+          <span class="chip-dot dot-cours"></span> Cours
+        </button>
+        <button type="button" class="filter-chip active" data-category="alternance" id="filterAlternance">
+          <span class="chip-dot dot-alternance"></span> Alternance
+        </button>
+        <button type="button" class="filter-chip active" data-category="travail" id="filterTravail">
+          <span class="chip-dot dot-travail"></span> Travail
+        </button>
+        <button type="button" class="filter-chip active" data-category="sport" id="filterSport">
+          <span class="chip-dot dot-sport"></span> Volley
+        </button>
+        <button type="button" class="filter-chip active" data-category="medical" id="filterMedical">
+          <span class="chip-dot dot-medical"></span> Médical
+        </button>
+        <button type="button" class="filter-chip active" data-category="perso" id="filterPerso">
+          <span class="chip-dot dot-perso"></span> Personnel
+        </button>
+        <button type="button" class="filter-chip active" data-category="pause" id="filterPause" title="Afficher ou masquer les pauses">
+          <span class="chip-dot dot-pause"></span> Pauses
+        </button>
+      </div>
+    </section>
+
+    <!-- Ruban de Métriques Studio / Executive Metrics -->
+    <div class="metrics-ribbon">
+      <div class="metric-item">
+        <span class="metric-dot dot-cours"></span>
+        <span class="metric-label">Cours</span>
+        <span class="metric-val" id="statsCoursHours">0 h</span>
+      </div>
+      <div class="metric-sep"></div>
+      <div class="metric-item">
+        <span class="metric-dot dot-alternance"></span>
+        <span class="metric-label">Alternance & TT</span>
+        <span class="metric-val" id="statsAlternanceHours">0 h</span>
+      </div>
+      <div class="metric-sep"></div>
+      <div class="metric-item">
+        <span class="metric-dot dot-travail"></span>
+        <span class="metric-label">Travail week-end</span>
+        <span class="metric-val" id="statsTravailHours">14 h</span>
+      </div>
+      <div class="metric-sep"></div>
+      <div class="metric-item">
+        <span class="metric-dot dot-sport"></span>
+        <span class="metric-label">Volley-ball</span>
+        <span class="metric-val" id="statsSportHours">2 h</span>
+      </div>
+      <div class="metric-sep"></div>
+      <div class="metric-item metric-total">
+        <span class="metric-label">Total engagé</span>
+        <span class="metric-val highlight" id="statsTotalHours">0 h</span>
+      </div>
+      <div class="metric-spacer"></div>
+      <div class="metric-notice" id="statsTipContainer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span id="statsTipDesc">Volley Lun/Mar : Début semaine prochaine (14 sept.)</span>
+      </div>
+    </div>
+
+    <!-- Main Schedule Grid Area -->
+    <main class="schedule-viewport" id="scheduleViewport">
+      <div class="schedule-container" id="schedulePrintArea">
+        <!-- Sticky Days Header -->
+        <div class="schedule-header-grid" id="daysHeaderGrid">
+          <div class="time-axis-corner" title="Heures (Paris)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <!-- 7 Days headers dynamically rendered -->
+          <div class="day-header" data-day-index="0" id="headerDay0">
+            <span class="day-name">Lundi</span>
+            <span class="day-number">7</span>
+          </div>
+          <div class="day-header" data-day-index="1" id="headerDay1">
+            <span class="day-name">Mardi</span>
+            <span class="day-number">8</span>
+          </div>
+          <div class="day-header" data-day-index="2" id="headerDay2">
+            <span class="day-name">Mercredi</span>
+            <span class="day-number">9</span>
+          </div>
+          <div class="day-header" data-day-index="3" id="headerDay3">
+            <span class="day-name">Jeudi</span>
+            <span class="day-number">10</span>
+          </div>
+          <div class="day-header" data-day-index="4" id="headerDay4">
+            <span class="day-name">Vendredi</span>
+            <span class="day-number">11</span>
+          </div>
+          <div class="day-header weekend-header" data-day-index="5" id="headerDay5">
+            <span class="day-name">Samedi</span>
+            <span class="day-number">12</span>
+          </div>
+          <div class="day-header weekend-header" data-day-index="6" id="headerDay6">
+            <span class="day-name">Dimanche</span>
+            <span class="day-number">13</span>
+          </div>
+        </div>
+
+        <!-- Schedule Grid Body (06:00 to 23:00) -->
+        <div class="schedule-body-grid" id="scheduleBodyGrid">
+          <!-- Time Axis Column (06:00 to 23:00) -->
+          <div class="time-axis-col" id="timeAxisCol">
+            <!-- 17 hour rows (6h to 23h) generated by JS -->
+          </div>
+
+          <!-- 7 Day Columns -->
+          <div class="day-columns-wrapper" id="dayColumnsWrapper">
+            <div class="day-column" data-day-index="0" id="dayCol0">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents0"></div>
+            </div>
+            <div class="day-column" data-day-index="1" id="dayCol1">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents1"></div>
+            </div>
+            <div class="day-column" data-day-index="2" id="dayCol2">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents2"></div>
+            </div>
+            <div class="day-column" data-day-index="3" id="dayCol3">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents3"></div>
+            </div>
+            <div class="day-column" data-day-index="4" id="dayCol4">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents4"></div>
+            </div>
+            <div class="day-column weekend-col" data-day-index="5" id="dayCol5">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents5"></div>
+            </div>
+            <div class="day-column weekend-col" data-day-index="6" id="dayCol6">
+              <div class="grid-slot-lines"></div>
+              <div class="day-events-layer" id="dayEvents6"></div>
+            </div>
+
+            <!-- Current Real-Time Indicator Line (Moved dynamically) -->
+            <div class="current-time-indicator" id="currentTimeLine" style="display: none;">
+              <span class="time-dot"></span>
+              <span class="time-tag" id="currentTimeTag">18:45</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span class="footer-dot"></span>
+        <span>Sauvegarde automatique locale active</span>
+        <span class="footer-sep">•</span>
+        <span id="eventsCountLabel">336 événements synchronisés</span>
+      </div>
+      <div class="footer-right">
+        <button type="button" class="footer-link-btn" id="resetDataBtn" title="Réinitialiser toutes les données par défaut">Réinitialiser le planning</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- MODAL : Ajouter / Modifier un Événement -->
+  <div class="modal-overlay" id="eventModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-header-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <div class="modal-title-wrap">
+          <h3 class="modal-title" id="eventModalTitle">Ajouter un événement</h3>
+          <p class="modal-subtitle">Créer une activité ponctuelle ou récurrente</p>
+        </div>
+        <button type="button" class="btn-close-modal" id="closeEventModalBtn" title="Fermer">✕</button>
+      </div>
+
+      <form id="eventForm" class="modal-body">
+        <input type="hidden" id="formEventId" value="">
+
+        <!-- Titre -->
+        <div class="form-group">
+          <label for="formTitle" class="form-label">Titre de l'événement <span class="required">*</span></label>
+          <input type="text" id="formTitle" class="form-input" placeholder="Ex: Séance de Muscu, Dentiste, Révisions..." required>
+        </div>
+
+        <!-- Catégorie -->
+        <div class="form-group">
+          <label class="form-label">Catégorie</label>
+          <div class="category-radio-group">
+            <label class="category-radio-btn" data-cat="alternance">
+              <input type="radio" name="formCategory" value="alternance">
+              <span class="radio-custom"><span class="cat-dot dot-alternance"></span> Alternance</span>
+            </label>
+            <label class="category-radio-btn" data-cat="sport">
+              <input type="radio" name="formCategory" value="sport" checked>
+              <span class="radio-custom"><span class="cat-dot dot-sport"></span> Sport</span>
+            </label>
+            <label class="category-radio-btn" data-cat="medical">
+              <input type="radio" name="formCategory" value="medical">
+              <span class="radio-custom"><span class="cat-dot dot-medical"></span> Médical</span>
+            </label>
+            <label class="category-radio-btn" data-cat="travail">
+              <input type="radio" name="formCategory" value="travail">
+              <span class="radio-custom"><span class="cat-dot dot-travail"></span> Travail</span>
+            </label>
+            <label class="category-radio-btn" data-cat="cours">
+              <input type="radio" name="formCategory" value="cours">
+              <span class="radio-custom"><span class="cat-dot dot-cours"></span> Cours</span>
+            </label>
+            <label class="category-radio-btn" data-cat="perso">
+              <input type="radio" name="formCategory" value="perso">
+              <span class="radio-custom"><span class="cat-dot dot-perso"></span> Personnel</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Date & Horaires -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="formDate" class="form-label">Date <span class="required">*</span></label>
+            <input type="date" id="formDate" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label for="formStartTime" class="form-label">Heure début <span class="required">*</span></label>
+            <input type="time" id="formStartTime" class="form-input" value="14:00" step="300" required>
+          </div>
+          <div class="form-group">
+            <label for="formEndTime" class="form-label">Heure fin <span class="required">*</span></label>
+            <input type="time" id="formEndTime" class="form-input" value="16:00" step="300" required>
+          </div>
+        </div>
+
+        <!-- Lieu -->
+        <div class="form-group">
+          <label for="formLocation" class="form-label">Lieu / Salle</label>
+          <div class="input-with-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <input type="text" id="formLocation" class="form-input" placeholder="Ex: Cabinet Médical, Salle de sport...">
+          </div>
+        </div>
+
+        <!-- Description / Notes -->
+        <div class="form-group">
+          <label for="formDescription" class="form-label">Notes / Description</label>
+          <textarea id="formDescription" class="form-textarea" rows="2" placeholder="Détails, documents à apporter, etc."></textarea>
+        </div>
+
+        <!-- Option Récurrence -->
+        <div class="form-group form-checkbox-group">
+          <label class="checkbox-container">
+            <input type="checkbox" id="formIsRecurring">
+            <span class="checkmark"></span>
+            <span class="checkbox-label">Répéter chaque semaine à la même heure (pendant tout le semestre)</span>
+          </label>
+        </div>
+
+        <!-- Actions -->
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="cancelEventBtn">Annuler</button>
+          <button type="button" class="btn btn-danger" id="deleteFormEventBtn" style="display: none;">Supprimer</button>
+          <button type="submit" class="btn btn-primary" id="saveEventBtn">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL : Détail d'un Événement cliqué -->
+  <div class="modal-overlay" id="detailModal" aria-hidden="true">
+    <div class="modal-card modal-detail-card">
+      <div class="modal-header">
+        <span class="detail-category-badge" id="detailBadge">Cours</span>
+        <button type="button" class="btn-close-modal" id="closeDetailModalBtn" title="Fermer">✕</button>
+      </div>
+      <div class="modal-body detail-modal-body">
+        <h3 class="detail-event-title" id="detailTitle">Titre de l'événement</h3>
+
+        <div class="detail-info-grid">
+          <!-- Date & Heure -->
+          <div class="detail-item">
+            <span class="detail-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </span>
+            <div class="detail-text-col">
+              <span class="detail-sublabel">Horaire</span>
+              <span class="detail-val" id="detailTime">Mardi 8 sept. • 14:00 - 16:00</span>
+            </div>
+          </div>
+
+          <!-- Lieu / Salle -->
+          <div class="detail-item" id="detailLocationRow">
+            <span class="detail-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </span>
+            <div class="detail-text-col">
+              <span class="detail-sublabel">Lieu / Salle</span>
+              <span class="detail-val" id="detailLocation">IUTM - B316</span>
+            </div>
+          </div>
+
+          <!-- Enseignant (si cours) -->
+          <div class="detail-item" id="detailTeacherRow">
+            <span class="detail-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <div class="detail-text-col">
+              <span class="detail-sublabel">Enseignant / Intervenant</span>
+              <span class="detail-val" id="detailTeacher">M. Laroussi</span>
+            </div>
+          </div>
+
+          <!-- Groupe (si cours) -->
+          <div class="detail-item" id="detailGroupRow">
+            <span class="detail-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </span>
+            <div class="detail-text-col">
+              <span class="detail-sublabel">Groupe</span>
+              <span class="detail-val" id="detailGroup">B3.2 - C3</span>
+            </div>
+          </div>
+
+          <!-- Description / Notes -->
+          <div class="detail-item full-width" id="detailDescRow">
+            <span class="detail-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+            </span>
+            <div class="detail-text-col">
+              <span class="detail-sublabel">Description / Détails</span>
+              <p class="detail-desc-text" id="detailDescription"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer detail-modal-footer">
+          <button type="button" class="btn btn-danger" id="detailDeleteBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>Supprimer</span>
+          </button>
+          <button type="button" class="btn btn-secondary" id="detailEditBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span>Modifier</span>
+          </button>
+          <button type="button" class="btn btn-primary" id="detailCloseBtn">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Importer un fichier .ICS / Flux iCal -->
+  <div class="modal-overlay" id="importModal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-header-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <div class="modal-title-wrap">
+          <h3 class="modal-title">Importer un Emploi du Temps</h3>
+          <p class="modal-subtitle">Format iCalendar (.ics) depuis ADE Campus ou l'ENT</p>
+        </div>
+        <button type="button" class="btn-close-modal" id="closeImportModalBtn" title="Fermer">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Drag & Drop Zone -->
+        <div class="drop-zone" id="icsDropZone">
+          <div class="drop-zone-content">
+            <span class="drop-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+            </span>
+            <h4>Dépose ton fichier .ics ici</h4>
+            <p>ou clique pour parcourir tes dossiers</p>
+            <input type="file" id="icsFileInput" accept=".ics,.ical" class="file-input-hidden">
+            <button type="button" class="btn btn-secondary btn-sm" id="triggerFileSelectBtn">Parcourir les fichiers</button>
+          </div>
+        </div>
+
+        <div class="import-divider">
+          <span>OU VIA UNE URL DIRECTE</span>
+        </div>
+
+        <!-- URL Input -->
+        <div class="form-group">
+          <label for="icsUrlInput" class="form-label">Lien du flux iCal / ADE</label>
+          <input type="url" id="icsUrlInput" class="form-input" placeholder="https://ade.univ-eiffel.fr/custom/modules/eds/events.ics?..." >
+          <span class="input-helper">Colle ici l'URL de synchronisation directe de ton ENT pour importer les cours.</span>
+        </div>
+
+        <div class="import-alert">
+          <span class="alert-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </span>
+          <span>L'import mettra à jour automatiquement les cours d'école tout en préservant tes créneaux de travail et de volley.</span>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="cancelImportBtn">Annuler</button>
+          <button type="button" class="btn btn-primary" id="processUrlImportBtn">Synchroniser via le lien</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="ics-parser.js"></script>
+  <script src="default-events.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
