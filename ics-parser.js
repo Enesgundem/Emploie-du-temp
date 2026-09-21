@@ -6,6 +6,7 @@ const ICSParser = (function () {
   'use strict';
 
   function unfoldLines(icsContent) {
+    if (!icsContent) return [];
     const rawLines = icsContent.split(/\r?\n/);
     const lines = [];
     for (let i = 0; i < rawLines.length; i++) {
@@ -22,7 +23,7 @@ const ICSParser = (function () {
   function parseDate(dateStr) {
     if (!dateStr) return null;
     // Format YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
-    const mTime = dateStr.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/);
+    const mTime = dateStr.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/i);
     if (mTime) {
       const isUTC = Boolean(mTime[7]);
       if (isUTC) {
@@ -42,9 +43,14 @@ const ICSParser = (function () {
 
   function cleanDescription(desc) {
     if (!desc) return { prof: '', group: '', raw: '' };
-    const unescaped = desc.replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';');
+    const unescaped = desc
+      .replace(/\\n/gi, '\n')
+      .replace(/\\,/g, ',')
+      .replace(/\\;/g, ';')
+      .replace(/\\\\/g, '\\');
     const lines = unescaped.split('\n').map(l => l.trim()).filter(Boolean);
-    let prof = '', groups = [];
+    let prof = '';
+    const groups = [];
     lines.forEach(l => {
       if (l.startsWith('(Exporté')) return;
       if (/^[A-Z][0-9]+(\.[0-9]+)?$/.test(l) || /^[BC][0-9]/.test(l) || l.includes('MMIm') || l.includes('BUT')) {
@@ -80,7 +86,7 @@ const ICSParser = (function () {
           if (startDate && endDate) {
             const desc = cleanDescription(cur.DESCRIPTION);
             events.push({
-              id: 'ics_' + (cur.UID ? cur.UID.replace(/[^a-zA-Z0-9_-]/g, '') : Date.now() + '_' + Math.random().toString(36).substr(2, 6)),
+              id: 'ics_' + (cur.UID ? cur.UID.replace(/[^a-zA-Z0-9_-]/g, '') : Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
               title: formatTitle(cur.SUMMARY),
               fullTitle: cur.SUMMARY ? cur.SUMMARY.trim() : 'Cours',
               location: cur.LOCATION ? cur.LOCATION.trim() : '',
@@ -109,7 +115,9 @@ const ICSParser = (function () {
 
   return {
     parse,
-    parseDate
+    parseDate,
+    formatTitle,
+    cleanDescription
   };
 })();
 

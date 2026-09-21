@@ -26,6 +26,26 @@
     selectedDayIndex: 0
   };
 
+  // Cache pour l'optimisation des calculs statistiques de 940+ créneaux
+  let cachedSubjectsData = null;
+  let cachedAlternanceData = null;
+  let eventsDataDirty = true;
+
+  function markEventsDirty() {
+    eventsDataDirty = true;
+    cachedSubjectsData = null;
+    cachedAlternanceData = null;
+  }
+
+  // Utilitaire de debounce pour la saisie ultra-fluide (60fps)
+  function debounce(fn, delay) {
+    let timer = null;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
   // Noms des mois et jours en français
   const MONTH_NAMES = [
     'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
@@ -109,24 +129,52 @@
       console.error('Erreur chargement localStorage:', e);
       state.events = (typeof ALL_DEFAULT_EVENTS !== 'undefined') ? [...ALL_DEFAULT_EVENTS] : [];
     }
+    markEventsDirty();
   }
 
   function saveEvents() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.events));
+      markEventsDirty();
       updateFooterCount();
     } catch (e) {
       console.error('Erreur sauvegarde localStorage:', e);
     }
   }
 
-  // Initialisation sur la date actuelle (ou début de semaine du 7 septembre 2026)
+  // Initialisation sur la date actuelle ou rentrée 2026
   function initCurrentDate() {
-    // Utiliser la date système locale (actuellement 2026-09-07)
     const now = new Date();
-    state.currentMonday = getMonday(now);
-    const day = now.getDay();
-    state.selectedDayIndex = (day === 0 ? 6 : day - 1);
+    const minAcademicDate = new Date('2026-08-25T00:00:00');
+    const maxAcademicDate = new Date('2027-08-01T23:59:59');
+
+    if (now >= minAcademicDate && now <= maxAcademicDate) {
+      state.currentMonday = getMonday(now);
+      const day = now.getDay();
+      state.selectedDayIndex = (day === 0 ? 6 : day - 1);
+    } else {
+      // Si la date système est hors de l'année universitaire 2026-2027, caler sur la rentrée de septembre 2026
+      state.currentMonday = getMonday(new Date('2026-09-07T00:00:00'));
+      state.selectedDayIndex = 0;
+    }
+  }
+
+  function goToToday() {
+    const now = new Date();
+    const minAcademicDate = new Date('2026-08-25T00:00:00');
+    const maxAcademicDate = new Date('2027-08-01T23:59:59');
+
+    if (now >= minAcademicDate && now <= maxAcademicDate) {
+      state.currentMonday = getMonday(now);
+      const day = now.getDay();
+      state.selectedDayIndex = (day === 0 ? 6 : day - 1);
+    } else {
+      state.currentMonday = getMonday(new Date('2026-09-07T00:00:00'));
+      state.selectedDayIndex = 0;
+      showToast('Planning calé sur la rentrée universitaire 2026-2027');
+    }
+    render();
+    updateDayColumnsVisibility();
   }
 
   function getMonday(d) {
@@ -510,11 +558,12 @@
 
       const dayEvents = getEventsForDay(dayIdx);
       const positionedItems = layoutDayEvents(dayEvents);
+      const fragment = document.createDocumentFragment();
 
       positionedItems.forEach(item => {
         const ev = item.event;
         const card = createEventCard(ev, item.startMin, item.endMin, item.col, item.totalCols);
-        layer.appendChild(card);
+        fragment.appendChild(card);
       });
 
       // Filigrane / badge discret pour jour férié
@@ -533,8 +582,10 @@
           <span class="holiday-watermark-title">Jour férié</span>
           <span class="holiday-watermark-desc">${escapeHtml(holidayName)}</span>
         `;
-        layer.appendChild(watermark);
+        fragment.appendChild(watermark);
       }
+
+      layer.appendChild(fragment);
     }
   }
 
@@ -1276,6 +1327,9 @@
   }
 
   function calculateSubjectsData() {
+    if (!eventsDataDirty && cachedSubjectsData) {
+      return cachedSubjectsData;
+    }
     const now = new Date();
     // Extraire uniquement les cours d'école
     const courseEvents = state.events.filter(ev => ev.category === 'cours' || ev.isSchool);
@@ -1393,7 +1447,7 @@
     const globalRemainingHours = Math.round((globalRemainingMin / 60) * 10) / 10;
     const globalPct = globalTotalHours > 0 ? Math.min(100, Math.round((globalDoneHours / globalTotalHours) * 100)) : 0;
 
-    return {
+    const resData = {
       subjects,
       global: {
         totalHours: globalTotalHours,
@@ -1406,6 +1460,9 @@
         modulesCount: subjects.length
       }
     };
+    cachedSubjectsData = resData;
+    eventsDataDirty = false;
+    return resData;
   }
 
   function renderSubjectsModal() {
@@ -1610,6 +1667,9 @@
      BILAN DE L'ALTERNANCE & DU TÉLÉTRAVAIL (ENTREPRISE & TT)
      ========================================================================== */
   function calculateAlternanceData() {
+    if (!eventsDataDirty && cachedAlternanceData) {
+      return cachedAlternanceData;
+    }
     const now = new Date();
     const altEvents = state.events.filter(ev => ev.category === 'alternance');
 
@@ -1756,7 +1816,7 @@
     const inProgressWeeksCount = weeks.filter(w => w.status === 'in_progress').length;
     const upcomingWeeksCount = weeks.filter(w => w.status === 'upcoming').length;
 
-    return {
+    const resData = {
       weeks,
       global: {
         totalHours,
@@ -1781,6 +1841,8 @@
         }
       }
     };
+    cachedAlternanceData = resData;
+    return resData;
   }
 
   function renderAlternanceBilan() {
@@ -2052,14 +2114,27 @@
       }
     });
 
-    document.getElementById('todayBtn')?.addEventListener('click', () => {
-      const now = new Date();
-      state.currentMonday = getMonday(now);
-      const day = now.getDay();
-      state.selectedDayIndex = (day === 0 ? 6 : day - 1);
-      render();
-      updateDayColumnsVisibility();
-    });
+    document.getElementById('todayBtn')?.addEventListener('click', goToToday);
+
+    // Clic direct sur un créneau horaire vide pour créer rapidement un événement
+    const columnsWrapper = document.getElementById('dayColumnsWrapper');
+    if (columnsWrapper) {
+      columnsWrapper.addEventListener('click', (e) => {
+        if (e.target.closest('.event-card') || e.target.closest('.holiday-day-watermark') || e.target.closest('.current-time-indicator')) {
+          return;
+        }
+        const col = e.target.closest('.day-column');
+        if (!col) return;
+        const dayIdx = parseInt(col.getAttribute('data-day-index'), 10);
+        if (isNaN(dayIdx)) return;
+
+        const rect = col.getBoundingClientRect();
+        const offsetY = Math.max(0, e.clientY - rect.top);
+        const clickedHour = Math.min(GRID_END_HOUR - 1, Math.max(GRID_START_HOUR, Math.floor(GRID_START_HOUR + (offsetY / HOUR_HEIGHT))));
+        const targetDate = addDays(state.currentMonday, dayIdx);
+        openAddModal(targetDate, clickedHour);
+      });
+    }
 
     // Bascule Mode Jour / Semaine
     document.getElementById('viewModeDayBtn')?.addEventListener('click', () => setViewMode('day'));
@@ -2185,16 +2260,18 @@
       });
     });
 
-    // Filtres & Recherche de l'onglet Cours
+    // Filtres & Recherche de l'onglet Cours (avec micro-debounce pour saisie fluide)
     const subjSearchInput = document.getElementById('subjectsSearchInput');
     const clearSearchBtn = document.getElementById('clearSubjectSearchBtn');
+    const debouncedRenderSubjects = debounce(() => renderSubjectsModal(), 80);
+
     if (subjSearchInput) {
       subjSearchInput.addEventListener('input', (e) => {
         currentSubjectSearchQuery = e.target.value;
         if (clearSearchBtn) {
           clearSearchBtn.style.display = currentSubjectSearchQuery ? 'block' : 'none';
         }
-        renderSubjectsModal();
+        debouncedRenderSubjects();
       });
     }
     if (clearSearchBtn && subjSearchInput) {
@@ -2216,16 +2293,18 @@
       });
     });
 
-    // Filtres & Recherche de l'onglet Alternance
+    // Filtres & Recherche de l'onglet Alternance (avec micro-debounce)
     const altSearchInput = document.getElementById('altSearchInput');
     const clearAltSearchBtn = document.getElementById('clearAltSearchBtn');
+    const debouncedRenderAlt = debounce(() => renderAlternanceBilan(), 80);
+
     if (altSearchInput) {
       altSearchInput.addEventListener('input', (e) => {
         currentAltSearchQuery = e.target.value;
         if (clearAltSearchBtn) {
           clearAltSearchBtn.style.display = currentAltSearchQuery ? 'block' : 'none';
         }
-        renderAlternanceBilan();
+        debouncedRenderAlt();
       });
     }
     if (clearAltSearchBtn && altSearchInput) {
@@ -2349,12 +2428,50 @@
       });
     });
 
+    // Gestion des touches du clavier (Raccourcis & Échap)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeEventModal();
         closeDetailModal();
         closeImportModal();
         closeSubjectsModal();
+        return;
+      }
+
+      // Ignorer les raccourcis si l'utilisateur saisit dans un champ de formulaire
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+        return;
+      }
+
+      // Ignorer les raccourcis de navigation si une modale est ouverte
+      if (document.querySelector('.modal-overlay.active')) {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (state.viewMode === 'day') goToPrevDay();
+        else {
+          state.currentMonday = addDays(state.currentMonday, -7);
+          render();
+        }
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (state.viewMode === 'day') goToNextDay();
+        else {
+          state.currentMonday = addDays(state.currentMonday, 7);
+          render();
+        }
+      } else if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        goToToday();
+      } else if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        openAddModal();
+      } else if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        openSubjectsModal();
       }
     });
   }

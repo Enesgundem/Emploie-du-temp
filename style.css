@@ -1312,6 +1312,7 @@ html, body {
   position: relative;
   border-right: 1px solid var(--border-subtle);
   height: 100%;
+  cursor: pointer;
 }
 
 .day-column:last-child {
@@ -3485,29 +3486,64 @@ html, body {
 
 /* Impression / Export PDF */
 @media print {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
   body {
     background: #ffffff !important;
     color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  .glow-orb, .app-header, .control-panel, .app-footer, .modal-overlay, .toast-container, .mobile-day-selector, .mobile-fab {
+  .glow-orb, .app-header, .control-panel, .metrics-ribbon, .app-footer, .modal-overlay, .toast-container, .mobile-day-selector, .mobile-fab {
     display: none !important;
   }
+  .app-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
   .schedule-viewport {
-    border: 1px solid #ccc !important;
+    border: 1px solid #cbd5e1 !important;
     box-shadow: none !important;
-    background: #fff !important;
+    background: #ffffff !important;
+    overflow: visible !important;
   }
   .schedule-container {
     min-width: 100% !important;
+    width: 100% !important;
+  }
+  .schedule-body-grid {
+    border-top: 1px solid #cbd5e1 !important;
+  }
+  .day-columns-wrapper {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
   }
   .day-column {
     display: block !important;
+    border-right: 1px solid #e2e8f0 !important;
   }
   .day-header {
     display: flex !important;
+    border-right: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    background: #f8fafc !important;
   }
   .event-card {
-    border: 1px solid #333 !important;
-    color: #000 !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    border-left-width: 4px !important;
+    color: #0f172a !important;
+    background: #f1f5f9 !important;
+    break-inside: avoid !important;
+  }
+  .event-card .event-title {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+  }
+  .current-time-indicator {
+    display: none !important;
   }
 }

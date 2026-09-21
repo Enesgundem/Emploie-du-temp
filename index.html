@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mon Emploi du Temps | Planning Personnel & Universitaire</title>
   <meta name="description" content="Application moderne d'emploi du temps personnel avec intégration ADE iCalendar, travail week-end, volley-ball et gestion d'événements. Thème sombre et Vert Peugeot 308.">
+  <meta name="theme-color" content="#0c0f13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Emploi du Temps">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23162f22'/%3E%3Cpath d='M28 20v14M72 20v14M18 38h64M24 26h52a6 6 0 0 1 6 6v48a6 6 0 0 1-6 6H24a6 6 0 0 1-6-6V32a6 6 0 0 1 6-6z' stroke='%2348a375' stroke-width='6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Ccircle cx='38' cy='54' r='5' fill='%2348a375'/%3E%3Ccircle cx='62' cy='54' r='5' fill='%233b82f6'/%3E%3Ccircle cx='50' cy='68' r='5' fill='%23d97706'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -107,13 +112,13 @@
       <div class="week-navigation">
         <div class="week-nav-top-row">
           <div class="nav-segmented-control">
-            <button type="button" class="btn-nav" id="prevWeekBtn" title="Précédent">
+            <button type="button" class="btn-nav" id="prevWeekBtn" title="Précédent" aria-label="Semaine précédente">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
             </button>
-            <button type="button" class="btn-nav btn-today" id="todayBtn">Aujourd'hui</button>
-            <button type="button" class="btn-nav" id="nextWeekBtn" title="Suivant">
+            <button type="button" class="btn-nav btn-today" id="todayBtn" aria-label="Revenir à aujourd'hui">Aujourd'hui</button>
+            <button type="button" class="btn-nav" id="nextWeekBtn" title="Suivant" aria-label="Semaine suivante">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
@@ -133,7 +138,7 @@
         </div>
 
         <div class="date-picker-wrap">
-          <input type="date" id="dateJumpInput" class="date-picker-input" value="2026-09-07" title="Sauter à une date">
+          <input type="date" id="dateJumpInput" class="date-picker-input" value="2026-09-07" min="2026-08-31" max="2027-07-31" title="Sauter à une date" aria-label="Sélectionner une date">
         </div>
       </div>
 
@@ -345,7 +350,7 @@
   </div>
 
   <!-- MODAL : Ajouter / Modifier un Événement -->
-  <div class="modal-overlay" id="eventModal" aria-hidden="true">
+  <div class="modal-overlay" id="eventModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-header-icon">
@@ -360,7 +365,7 @@
           <h3 class="modal-title" id="eventModalTitle">Ajouter un événement</h3>
           <p class="modal-subtitle">Créer une activité ponctuelle ou récurrente</p>
         </div>
-        <button type="button" class="btn-close-modal" id="closeEventModalBtn" title="Fermer">✕</button>
+        <button type="button" class="btn-close-modal" id="closeEventModalBtn" title="Fermer" aria-label="Fermer la boîte de dialogue">✕</button>
       </div>
 
       <form id="eventForm" class="modal-body">
@@ -457,11 +462,11 @@
   </div>
 
   <!-- MODAL : Détail d'un Événement cliqué -->
-  <div class="modal-overlay" id="detailModal" aria-hidden="true">
+  <div class="modal-overlay" id="detailModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
     <div class="modal-card modal-detail-card">
       <div class="modal-header">
         <span class="detail-category-badge" id="detailBadge">Cours</span>
-        <button type="button" class="btn-close-modal" id="closeDetailModalBtn" title="Fermer">✕</button>
+        <button type="button" class="btn-close-modal" id="closeDetailModalBtn" title="Fermer" aria-label="Fermer la boîte de dialogue">✕</button>
       </div>
       <div class="modal-body detail-modal-body">
         <h3 class="detail-event-title" id="detailTitle">Titre de l'événement</h3>
@@ -566,7 +571,7 @@
   </div>
 
   <!-- MODAL : Importer un fichier .ICS / Flux iCal -->
-  <div class="modal-overlay" id="importModal" aria-hidden="true">
+  <div class="modal-overlay" id="importModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-header-icon">
@@ -577,10 +582,10 @@
           </svg>
         </div>
         <div class="modal-title-wrap">
-          <h3 class="modal-title">Importer un Emploi du Temps</h3>
+          <h3 class="modal-title" id="importModalTitle">Importer un Emploi du Temps</h3>
           <p class="modal-subtitle">Format iCalendar (.ics) depuis ADE Campus ou l'ENT</p>
         </div>
-        <button type="button" class="btn-close-modal" id="closeImportModalBtn" title="Fermer">✕</button>
+        <button type="button" class="btn-close-modal" id="closeImportModalBtn" title="Fermer" aria-label="Fermer la boîte de dialogue">✕</button>
       </div>
 
       <div class="modal-body">
@@ -633,7 +638,7 @@
   </div>
 
   <!-- MODAL : Bilan des Matières & Suivi des Heures (Cours & Alternance) -->
-  <div class="modal-overlay" id="subjectsModal" aria-hidden="true">
+  <div class="modal-overlay" id="subjectsModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="subjectsModalTitle">
     <div class="modal-card subjects-modal-card">
       <div class="modal-header">
         <div class="modal-header-icon">
@@ -645,10 +650,10 @@
           </svg>
         </div>
         <div class="modal-title-wrap">
-          <h3 class="modal-title">Bilan des Heures & Progression</h3>
+          <h3 class="modal-title" id="subjectsModalTitle">Bilan des Heures & Progression</h3>
           <p class="modal-subtitle">Suivi détaillé des cours universitaires, de l'alternance et des quotas horaires</p>
         </div>
-        <button type="button" class="btn-close-modal" id="closeSubjectsModalBtn" title="Fermer">✕</button>
+        <button type="button" class="btn-close-modal" id="closeSubjectsModalBtn" title="Fermer" aria-label="Fermer la boîte de dialogue">✕</button>
       </div>
 
       <!-- Segmented Control : Choix du Volet (Cours / Alternance / Synthèse) -->
