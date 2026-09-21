@@ -109,10 +109,31 @@ function formatYMD(d) {
 
 // Map dates that already have university courses
 const courseDays = new Set();
+// Map weeks (by Monday YYYY-MM-DD) that have university courses
+const courseWeeks = new Set();
 parsedCourses.forEach(c => {
   const d = new Date(c.start);
   courseDays.add(formatYMD(d));
+
+  const day = d.getUTCDay() || 7;
+  const mon = new Date(d);
+  mon.setUTCDate(d.getUTCDate() - day + 1);
+  courseWeeks.add(formatYMD(mon));
 });
+
+// Jours fériés légaux en France (2026-2027)
+const FRENCH_HOLIDAYS = new Set([
+  '2026-11-01', // Toussaint
+  '2026-11-11', // Armistice 1918
+  '2026-12-25', // Noël
+  '2027-01-01', // Jour de l'An
+  '2027-03-29', // Lundi de Pâques 2027
+  '2027-05-01', // Fête du Travail
+  '2027-05-06', // Ascension 2027
+  '2027-05-08', // Victoire 1945
+  '2027-05-17', // Lundi de Pentecôte 2027
+  '2027-07-14'  // Fête Nationale
+]);
 
 // Start from Monday 2026-08-31
 let curMonday = new Date('2026-08-31T00:00:00Z');
@@ -256,7 +277,10 @@ while (curMonday < endDate) {
       });
     }
 
-    // Alternance: 09h00 - 17h00 avec PAUSE 13h00 - 14h00 on weekdays without courses
+    // Alternance: 09h00 - 17h00 avec PAUSE 13h00 - 14h00
+    // L'alternance a lieu UNIQUEMENT sur les semaines complètes d'entreprise (semaines sans cours d'école)
+    const isSchoolWeek = courseWeeks.has(formatYMD(curMonday));
+
     const weekdays = [
       { d: mon, name: 'Lundi' },
       { d: tue, name: 'Mardi' },
@@ -265,9 +289,11 @@ while (curMonday < endDate) {
       { d: fri, name: 'Vendredi', isTT: true }
     ];
 
-    weekdays.forEach((dayInfo, dIdx) => {
-      const dayStr = formatYMD(dayInfo.d);
-      if (weekIndex >= 2 && !courseDays.has(dayStr)) {
+    if (weekIndex >= 2 && !isSchoolWeek) {
+      weekdays.forEach((dayInfo, dIdx) => {
+        const dayStr = formatYMD(dayInfo.d);
+        if (FRENCH_HOLIDAYS.has(dayStr)) return; // Jour férié chômé
+
         const titlePrefix = dayInfo.isTT ? 'Alternance (Télétravail)' : 'Alternance (Entreprise)';
         const loc = dayInfo.isTT ? 'À domicile (TT)' : 'En entreprise';
 
@@ -307,10 +333,9 @@ while (curMonday < endDate) {
           start: getISOTime(dayInfo.d, 14, 0),
           end: getISOTime(dayInfo.d, 17, 0),
           isRecurring: true,
-          isTT: Boolean(dayInfo.isTT)
         });
-      }
-    });
+      });
+    }
   }
 
   curMonday = addDays(curMonday, 7);
@@ -323,9 +348,9 @@ const allInitialEvents = [...parsedCourses, ...recurringEvents];
 console.log(`Total initial events: ${allInitialEvents.length}`);
 
 const jsContent = `// Données initiales générées pour Mon Emploi du Temps
-const INITIAL_COURSES = ${JSON.stringify(parsedCourses, null, 2)};
-const INITIAL_RECURRING_EVENTS = ${JSON.stringify(recurringEvents, null, 2)};
-const ALL_DEFAULT_EVENTS = ${JSON.stringify(allInitialEvents, null, 2)};
+const INITIAL_COURSES = ${JSON.stringify(parsedCourses)};
+const INITIAL_RECURRING_EVENTS = ${JSON.stringify(recurringEvents)};
+const ALL_DEFAULT_EVENTS = INITIAL_COURSES.concat(INITIAL_RECURRING_EVENTS);
 
 if (typeof module !== 'undefined') {
   module.exports = { INITIAL_COURSES, INITIAL_RECURRING_EVENTS, ALL_DEFAULT_EVENTS };

@@ -63,6 +63,16 @@
             <span>Importer .ics</span>
           </button>
 
+          <button type="button" class="btn btn-secondary" id="openSubjectsModalBtn" title="Bilan des heures (Cours & Alternance)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              <line x1="9" y1="7" x2="15" y2="7"></line>
+              <line x1="9" y1="11" x2="13" y2="11"></line>
+            </svg>
+            <span>Bilan & Heures</span>
+          </button>
+
           <button type="button" class="btn btn-icon theme-toggle-btn" id="themeToggleBtn" title="Basculer Thème Clair / Sombre" aria-label="Thème">
             <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -193,7 +203,8 @@
           <line x1="12" y1="16" x2="12" y2="12"></line>
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
-        <span id="statsTipDesc">Volley Lun/Mar : Début semaine prochaine (14 sept.)</span>
+        <span class="tip-title" id="statsTipTitle" style="font-weight: 600; color: var(--text-primary); margin-right: 2px;">Volley Lun/Mar :</span>
+        <span id="statsTipDesc">Début semaine prochaine (14 sept.)</span>
       </div>
     </div>
 
@@ -617,6 +628,287 @@
           <button type="button" class="btn btn-outline" id="cancelImportBtn">Annuler</button>
           <button type="button" class="btn btn-primary" id="processUrlImportBtn">Synchroniser via le lien</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Bilan des Matières & Suivi des Heures (Cours & Alternance) -->
+  <div class="modal-overlay" id="subjectsModal" aria-hidden="true">
+    <div class="modal-card subjects-modal-card">
+      <div class="modal-header">
+        <div class="modal-header-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <line x1="9" y1="7" x2="15" y2="7"></line>
+            <line x1="9" y1="11" x2="13" y2="11"></line>
+          </svg>
+        </div>
+        <div class="modal-title-wrap">
+          <h3 class="modal-title">Bilan des Heures & Progression</h3>
+          <p class="modal-subtitle">Suivi détaillé des cours universitaires, de l'alternance et des quotas horaires</p>
+        </div>
+        <button type="button" class="btn-close-modal" id="closeSubjectsModalBtn" title="Fermer">✕</button>
+      </div>
+
+      <!-- Segmented Control : Choix du Volet (Cours / Alternance / Synthèse) -->
+      <div class="modal-tab-bar" id="bilanTabsBar">
+        <button type="button" class="modal-tab-btn active" data-tab="cours" id="tabBilanCours">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <span>Cours d'école</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="alternance" id="tabBilanAlternance">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+          <span>Alternance & TT</span>
+        </button>
+        <button type="button" class="modal-tab-btn" data-tab="global" id="tabBilanGlobal">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span>Synthèse Globale</span>
+        </button>
+      </div>
+
+      <div class="modal-body subjects-modal-body">
+        <!-- ================= VOLET 1 : COURS UNIVERSITAIRES ================= -->
+        <div class="bilan-tab-pane active" id="paneBilanCours">
+          <!-- Global KPI Summary Cours -->
+          <div class="subjects-summary-grid">
+            <div class="subject-kpi-card">
+              <span class="kpi-label">Heures effectuées</span>
+              <div class="kpi-val-row">
+                <span class="kpi-val highlight" id="kpiDoneHours">0 h</span>
+                <span class="kpi-badge done-badge" id="kpiDonePct">0%</span>
+              </div>
+              <span class="kpi-sub" id="kpiDoneSessions">0 séances passées</span>
+            </div>
+
+            <div class="subject-kpi-card">
+              <span class="kpi-label">Heures restantes</span>
+              <div class="kpi-val-row">
+                <span class="kpi-val" id="kpiRemainingHours">0 h</span>
+                <span class="kpi-badge remaining-badge" id="kpiRemainingPct">100%</span>
+              </div>
+              <span class="kpi-sub" id="kpiRemainingSessions">0 séances à venir</span>
+            </div>
+
+            <div class="subject-kpi-card">
+              <span class="kpi-label">Volume total cours</span>
+              <div class="kpi-val-row">
+                <span class="kpi-val" id="kpiTotalHours">0 h</span>
+                <span class="kpi-badge total-badge" id="kpiModulesCount">0 matières</span>
+              </div>
+              <span class="kpi-sub" id="kpiTotalSessions">0 séances au semestre</span>
+            </div>
+          </div>
+
+          <!-- Global Progress Bar Cours -->
+          <div class="global-progress-wrap">
+            <div class="global-progress-header">
+              <span>Avancement du cursus universitaire</span>
+              <span class="global-progress-pct" id="globalProgressPct">0%</span>
+            </div>
+            <div class="global-progress-bar">
+              <div class="global-progress-fill" id="globalProgressFill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Toolbar (Search & Filter) Cours -->
+          <div class="subjects-toolbar">
+            <div class="subjects-search-box">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="subjectsSearchInput" class="subjects-search-input" placeholder="Filtrer par matière ou code (ex: R506, Anglais...)...">
+              <button type="button" class="search-clear-btn" id="clearSubjectSearchBtn" style="display: none;">✕</button>
+            </div>
+
+            <div class="subjects-filter-chips">
+              <button type="button" class="subject-chip active" data-filter="all" id="subjFilterAll">Toutes (<span id="subjCountAll">0</span>)</button>
+              <button type="button" class="subject-chip" data-filter="in_progress" id="subjFilterInProgress">En cours (<span id="subjCountInProgress">0</span>)</button>
+              <button type="button" class="subject-chip" data-filter="completed" id="subjFilterCompleted">Terminées (<span id="subjCountCompleted">0</span>)</button>
+              <button type="button" class="subject-chip" data-filter="upcoming" id="subjFilterUpcoming">À venir (<span id="subjCountUpcoming">0</span>)</button>
+            </div>
+          </div>
+
+          <!-- Cards List Cours -->
+          <div class="subjects-list-container" id="subjectsListContainer"></div>
+        </div>
+
+        <!-- ================= VOLET 2 : ALTERNANCE & TÉLÉTRAVAIL ================= -->
+        <div class="bilan-tab-pane" id="paneBilanAlternance" style="display: none;">
+          <!-- KPI Summary Alternance -->
+          <div class="subjects-summary-grid">
+            <div class="subject-kpi-card">
+              <span class="kpi-label">Heures effectuées</span>
+              <div class="kpi-val-row">
+                <span class="kpi-val highlight" id="kpiAltDoneHours">0 h</span>
+                <span class="kpi-badge done-badge" id="kpiAltDonePct">0%</span>
+              </div>
+              <span class="kpi-sub" id="kpiAltDoneWeeks">0 semaines faites</span>
+            </div>
+
+            <div class="subject-kpi-card">
+              <span class="kpi-label">Heures restantes</span>
+              <div class="kpi-val-row">
+                <span class="kpi-val" id="kpiAltRemainingHours">0 h</span>
+                <span class="kpi-badge remaining-badge" id="kpiAltRemainingPct">100%</span>
+              </div>
+              <span class="kpi-sub" id="kpiAltRemainingWeeks">0 semaines à venir</span>
+            </div>
+
+            <div class="subject-kpi-card">
+              <span class="kpi-label">Contrat d'alternance</span>
+              <div class="kpi-val-row">
+                <span class="kpi-val" id="kpiAltTotalHours">980 h</span>
+                <span class="kpi-badge total-badge" id="kpiAltTotalWeeks">28 semaines</span>
+              </div>
+              <span class="kpi-sub">35h / semaine complète</span>
+            </div>
+          </div>
+
+          <!-- Pôles de Répartition : Entreprise vs Télétravail -->
+          <div class="alt-poles-grid">
+            <div class="alt-pole-card on-site">
+              <div class="alt-pole-header">
+                <div class="alt-pole-title">
+                  <span class="alt-pole-icon">🏢</span>
+                  <div>
+                    <h5 class="alt-pole-name">En Entreprise (Sur site)</h5>
+                    <span class="alt-pole-desc">Du lundi au jeudi (7h nettes / jour)</span>
+                  </div>
+                </div>
+                <span class="alt-pole-hours" id="kpiAltOnSiteHours">872 h</span>
+              </div>
+              <div class="alt-pole-bar">
+                <div class="alt-pole-fill on-site" id="poleOnSiteFill" style="width: 0%;"></div>
+              </div>
+              <div class="alt-pole-footer">
+                <span id="poleOnSiteSub">0h faites • 872h restantes</span>
+                <span class="alt-pole-pct" id="poleOnSitePct">0%</span>
+              </div>
+            </div>
+
+            <div class="alt-pole-card tt">
+              <div class="alt-pole-header">
+                <div class="alt-pole-title">
+                  <span class="alt-pole-icon">💻</span>
+                  <div>
+                    <h5 class="alt-pole-name">Télétravail (À domicile)</h5>
+                    <span class="alt-pole-desc">Chaque vendredi (7h nettes / jour)</span>
+                  </div>
+                </div>
+                <span class="alt-pole-hours" id="kpiAltTtHours">108 h</span>
+              </div>
+              <div class="alt-pole-bar">
+                <div class="alt-pole-fill tt" id="poleTtFill" style="width: 0%;"></div>
+              </div>
+              <div class="alt-pole-footer">
+                <span id="poleTtSub">0h faites • 108h restantes</span>
+                <span class="alt-pole-pct" id="poleTtPct">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Progress Bar Alternance -->
+          <div class="global-progress-wrap">
+            <div class="global-progress-header">
+              <span>Avancement de l'alternance en entreprise</span>
+              <span class="global-progress-pct" id="globalAltProgressPct">0%</span>
+            </div>
+            <div class="global-progress-bar">
+              <div class="global-progress-fill" id="globalAltProgressFill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Toolbar Alternance -->
+          <div class="subjects-toolbar">
+            <div class="subjects-search-box">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="altSearchInput" class="subjects-search-input" placeholder="Filtrer par semaine ou mois (ex: S38, octobre, novembre...)...">
+              <button type="button" class="search-clear-btn" id="clearAltSearchBtn" style="display: none;">✕</button>
+            </div>
+
+            <div class="subjects-filter-chips">
+              <button type="button" class="subject-chip active" data-alt-filter="all" id="altFilterAll">Toutes (<span id="altCountAll">0</span>)</button>
+              <button type="button" class="subject-chip" data-alt-filter="in_progress" id="altFilterInProgress">En cours (<span id="altCountInProgress">0</span>)</button>
+              <button type="button" class="subject-chip" data-alt-filter="completed" id="altFilterCompleted">Effectuées (<span id="altCountCompleted">0</span>)</button>
+              <button type="button" class="subject-chip" data-alt-filter="upcoming" id="altFilterUpcoming">À venir (<span id="altCountUpcoming">0</span>)</button>
+            </div>
+          </div>
+
+          <!-- Cards List Alternance Weeks -->
+          <div class="subjects-list-container" id="alternanceListContainer"></div>
+        </div>
+
+        <!-- ================= VOLET 3 : SYNTHÈSE GLOBALE ================= -->
+        <div class="bilan-tab-pane" id="paneBilanGlobal" style="display: none;">
+          <div class="global-synthesis-card">
+            <div class="synthesis-header">
+              <span class="synthesis-badge">Volume Annuel Total</span>
+              <h4 class="synthesis-total-hours" id="grandTotalHours">1 324 h</h4>
+              <p class="synthesis-subtitle">Volume horaire cumulé sur l'ensemble de l'année universitaire et du contrat d'alternance</p>
+            </div>
+
+            <div class="synthesis-bars-breakdown">
+              <div class="synthesis-bar-row">
+                <div class="synthesis-bar-label">
+                  <span class="bar-color-dot dot-cours"></span>
+                  <span>Cours Universitaires</span>
+                  <span class="synthesis-bar-val" id="synthCoursVal">344 h (26%)</span>
+                </div>
+                <div class="synthesis-meter">
+                  <div class="synthesis-meter-fill meter-cours" id="synthCoursMeter" style="width: 26%;"></div>
+                </div>
+              </div>
+
+              <div class="synthesis-bar-row">
+                <div class="synthesis-bar-label">
+                  <span class="bar-color-dot dot-alternance"></span>
+                  <span>Alternance (Entreprise & TT)</span>
+                  <span class="synthesis-bar-val" id="synthAltVal">980 h (74%)</span>
+                </div>
+                <div class="synthesis-meter">
+                  <div class="synthesis-meter-fill meter-alternance" id="synthAltMeter" style="width: 74%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="synthesis-stats-grid">
+              <div class="synth-stat-item">
+                <span class="synth-stat-title">Heures Totales Effectuées</span>
+                <span class="synth-stat-num highlight" id="synthGrandDoneHours">0 h</span>
+                <span class="synth-stat-sub" id="synthGrandDonePct">0% de l'année réalisé</span>
+              </div>
+              <div class="synth-stat-item">
+                <span class="synth-stat-title">Heures Totales Restantes</span>
+                <span class="synth-stat-num" id="synthGrandRemainingHours">0 h</span>
+                <span class="synth-stat-sub" id="synthGrandRemainingPct">100% restant</span>
+              </div>
+              <div class="synth-stat-item">
+                <span class="synth-stat-title">Jours Fériés Chômés</span>
+                <span class="synth-stat-num">10 jours</span>
+                <span class="synth-stat-sub">Automatiquement grisés sur la grille</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="closeSubjectsFooterBtn">Fermer</button>
       </div>
     </div>
   </div>

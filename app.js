@@ -13,7 +13,8 @@
   const HOUR_HEIGHT = 62;     // 62px par heure
 
   // Clé de stockage local
-  const STORAGE_KEY = 'mon_emploi_du_temps_v3_events';
+  const STORAGE_KEY = 'mon_emploi_du_temps_v4_events';
+  const PREV_STORAGE_KEY = 'mon_emploi_du_temps_v3_events';
 
   // État de l'application
   const state = {
@@ -82,7 +83,20 @@
   // Chargement des données (localStorage ou défaut)
   function loadEvents() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      let stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored && localStorage.getItem(PREV_STORAGE_KEY)) {
+        // Migration depuis v3 vers v4 : recharger le calendrier sans alternance le 11 nov tout en préservant les créneaux créés par l'utilisateur
+        const oldEvents = JSON.parse(localStorage.getItem(PREV_STORAGE_KEY));
+        const userEvents = Array.isArray(oldEvents) ? oldEvents.filter(ev => ev.id && ev.id.startsWith('user_')) : [];
+        if (typeof ALL_DEFAULT_EVENTS !== 'undefined' && Array.isArray(ALL_DEFAULT_EVENTS)) {
+          state.events = [...ALL_DEFAULT_EVENTS, ...userEvents];
+        } else {
+          state.events = Array.isArray(oldEvents) ? oldEvents.filter(ev => !ev.start || !ev.start.includes('2026-11-11') || ev.category !== 'alternance') : [];
+        }
+        saveEvents();
+        return;
+      }
+
       if (stored) {
         state.events = JSON.parse(stored);
       } else if (typeof ALL_DEFAULT_EVENTS !== 'undefined' && Array.isArray(ALL_DEFAULT_EVENTS)) {
@@ -137,6 +151,30 @@
     const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
     return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
   }
+
+  function formatYMD(d) {
+    if (!d) return '';
+    const date = new Date(d);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // Jours fériés légaux français (2026-2027)
+  const FRENCH_HOLIDAYS_MAP = {
+    '2026-11-01': 'Toussaint',
+    '2026-11-11': 'Armistice 1918',
+    '2026-12-25': 'Noël',
+    '2027-01-01': "Jour de l'An",
+    '2027-03-29': 'Lundi de Pâques',
+    '2027-05-01': 'Fête du Travail',
+    '2027-05-06': 'Ascension',
+    '2027-05-08': 'Victoire 1945',
+    '2027-05-17': 'Lundi de Pentecôte',
+    '2027-07-14': 'Fête Nationale',
+    '2027-08-15': 'Assomption'
+  };
 
   /* ==========================================================================
      CONSTRUCTION DE LA GRILLE
@@ -207,6 +245,9 @@
 
     for (let i = 0; i < 7; i++) {
       const dayDate = addDays(state.currentMonday, i);
+      const dayYmd = formatYMD(dayDate);
+      const holidayName = FRENCH_HOLIDAYS_MAP[dayYmd];
+
       const headerEl = document.getElementById(`headerDay${i}`);
       const dayColEl = document.getElementById(`dayCol${i}`);
       const tabEl = document.getElementById(`mTab${i}`);
@@ -217,6 +258,22 @@
         if (nameEl) nameEl.textContent = DAY_NAMES[i];
         if (numEl) numEl.textContent = dayDate.getDate();
 
+        // Enlever ancien tag férié s'il existe
+        headerEl.querySelector('.holiday-header-tag')?.remove();
+
+        if (holidayName) {
+          headerEl.classList.add('is-holiday');
+          headerEl.title = `Jour férié : ${holidayName}`;
+          const holidayTag = document.createElement('span');
+          holidayTag.className = 'holiday-header-tag';
+          holidayTag.textContent = 'Férié';
+          holidayTag.title = holidayName;
+          headerEl.appendChild(holidayTag);
+        } else {
+          headerEl.classList.remove('is-holiday');
+          headerEl.removeAttribute('title');
+        }
+
         if (i === todayIndex) {
           headerEl.classList.add('today');
         } else {
@@ -225,6 +282,14 @@
       }
 
       if (dayColEl) {
+        if (holidayName) {
+          dayColEl.classList.add('is-holiday-col');
+          dayColEl.title = `Jour férié : ${holidayName}`;
+        } else {
+          dayColEl.classList.remove('is-holiday-col');
+          dayColEl.removeAttribute('title');
+        }
+
         if (i === todayIndex) {
           dayColEl.classList.add('today-col');
         } else {
@@ -236,6 +301,15 @@
       if (tabEl) {
         const tabNumEl = tabEl.querySelector('.m-day-num');
         if (tabNumEl) tabNumEl.textContent = dayDate.getDate();
+
+        if (holidayName) {
+          tabEl.classList.add('is-holiday-tab');
+          tabEl.title = `Jour férié : ${holidayName}`;
+        } else {
+          tabEl.classList.remove('is-holiday-tab');
+          tabEl.removeAttribute('title');
+        }
+
         if (i === todayIndex) {
           tabEl.classList.add('is-today');
         } else {
@@ -430,6 +504,10 @@
       if (!layer) continue;
       layer.innerHTML = '';
 
+      const dayDate = addDays(state.currentMonday, dayIdx);
+      const dayYmd = formatYMD(dayDate);
+      const holidayName = FRENCH_HOLIDAYS_MAP[dayYmd];
+
       const dayEvents = getEventsForDay(dayIdx);
       const positionedItems = layoutDayEvents(dayEvents);
 
@@ -438,6 +516,25 @@
         const card = createEventCard(ev, item.startMin, item.endMin, item.col, item.totalCols);
         layer.appendChild(card);
       });
+
+      // Filigrane / badge discret pour jour férié
+      if (holidayName && dayEvents.length === 0) {
+        const watermark = document.createElement('div');
+        watermark.className = 'holiday-day-watermark';
+        watermark.innerHTML = `
+          <div class="holiday-watermark-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <span class="holiday-watermark-title">Jour férié</span>
+          <span class="holiday-watermark-desc">${escapeHtml(holidayName)}</span>
+        `;
+        layer.appendChild(watermark);
+      }
     }
   }
 
@@ -599,13 +696,13 @@
 
     // Si semaine 37 (semaine du 7 sept 2026) -> reprise la semaine pro
     if (monday.getFullYear() === 2026 && monday.getMonth() === 8 && monday.getDate() >= 7 && monday.getDate() <= 13) {
-      if (tipTitle) tipTitle.textContent = 'Volley Lun/Mar';
+      if (tipTitle) tipTitle.textContent = 'Volley Lun/Mar :';
       if (tipDesc) tipDesc.textContent = 'Début semaine prochaine (14 sept.)';
     } else if (weekNum % 2 === 0) {
-      if (tipTitle) tipTitle.textContent = 'Semaine Volley+';
+      if (tipTitle) tipTitle.textContent = 'Semaine Volley+ :';
       if (tipDesc) tipDesc.textContent = 'Séances Lun, Mar et Ven (20h30)';
     } else {
-      if (tipTitle) tipTitle.textContent = 'Semaine standard';
+      if (tipTitle) tipTitle.textContent = 'Semaine standard :';
       if (tipDesc) tipDesc.textContent = 'Séance de Volley le Vendredi 20h30';
     }
   }
@@ -1062,16 +1159,24 @@
      EXPORT EN IMAGE PNG / IMPRESSION
      ========================================================================== */
   function exportSchedule() {
-    const printArea = document.getElementById('schedulePrintArea');
-    if (!printArea) return;
+    const printArea = document.getElementById('scheduleContainer') || document.getElementById('scheduleViewport');
+    if (!printArea) {
+      window.print();
+      return;
+    }
 
     if (typeof html2canvas !== 'undefined') {
       showToast('Génération de l\'image en cours...');
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const bgColor = isLight ? '#f8fafc' : '#0c0f13';
+
       html2canvas(printArea, {
-        backgroundColor: '#090c0e',
+        backgroundColor: bgColor,
         scale: 2, // Haute résolution
         logging: false,
-        useCORS: true
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0
       }).then(canvas => {
         const link = document.createElement('a');
         const weekNum = getISOWeekNumber(state.currentMonday);
@@ -1086,6 +1191,819 @@
     } else {
       window.print();
     }
+  }
+
+  /* ==========================================================================
+     BILAN DES COURS ET PROGRESSION DES MATIÈRES (MODULES MMI 3)
+     ========================================================================== */
+  let currentBilanTab = 'cours';
+  let currentSubjectFilter = 'all';
+  let currentSubjectSearchQuery = '';
+  let currentAltFilter = 'all';
+  let currentAltSearchQuery = '';
+
+  function openSubjectsModal(defaultTab) {
+    const modal = document.getElementById('subjectsModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    switchBilanTab(defaultTab || currentBilanTab);
+  }
+
+  function closeSubjectsModal() {
+    const modal = document.getElementById('subjectsModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function switchBilanTab(tabKey) {
+    currentBilanTab = tabKey;
+    document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === tabKey);
+    });
+
+    const paneCours = document.getElementById('paneBilanCours');
+    const paneAlt = document.getElementById('paneBilanAlternance');
+    const paneGlobal = document.getElementById('paneBilanGlobal');
+
+    if (paneCours) paneCours.style.display = (tabKey === 'cours') ? 'flex' : 'none';
+    if (paneAlt) paneAlt.style.display = (tabKey === 'alternance') ? 'flex' : 'none';
+    if (paneGlobal) paneGlobal.style.display = (tabKey === 'global') ? 'flex' : 'none';
+
+    if (tabKey === 'cours') renderSubjectsModal();
+    else if (tabKey === 'alternance') renderAlternanceBilan();
+    else if (tabKey === 'global') renderGlobalBilan();
+  }
+
+  function getSubjectInfo(title) {
+    if (!title) return { code: 'AUTRE', name: 'Autre cours', key: 'Autre cours' };
+    let t = title.trim().replace(/_MMIm3$/i, '').trim();
+
+    const codeMatch = t.match(/^(R\d{3}|SAE\d{3}|SAÉ\d{3})/i);
+    if (codeMatch) {
+      const code = codeMatch[1].toUpperCase();
+      let rest = t.slice(codeMatch[0].length).trim();
+      rest = rest.replace(/^[\s\-–—:]+/, '');
+      rest = rest.replace(/^(TP[0-9A-Z]*|TD[0-9A-Z]*|CM[0-9A-Z]*|TDB[0-9A-Z]*|TPC[0-9A-Z]*|FIFA|FA|Soutenances)[\s\-–—:]*/gi, '');
+      rest = rest.replace(/[\s\-–—:]+(TP[0-9A-Z]*|TD[0-9A-Z]*|CM[0-9A-Z]*|TDB[0-9A-Z]*|TPC[0-9A-Z]*|FIFA|FA)[\s\-–—:]*/gi, ' ');
+      rest = rest.replace(/[\s\-–—:]+$/, '').trim();
+      rest = rest.charAt(0).toUpperCase() + rest.slice(1);
+      if (code === 'R506') rest = 'Développement Back avancé';
+      if (code === 'R505') rest = 'Développement Front avancé';
+      if (code === 'R602') rest = 'Développement Web et Dispositif interactif';
+      if (code === 'R502') rest = 'Management et Assurance qualité';
+      if (code === 'R503') rest = 'Entrepreneuriat';
+      if (code === 'R507') rest = 'Dispositifs interactifs';
+      if (code === 'R508') rest = 'Hébergement et Cybersécurité';
+      if (code === 'R501') rest = 'Anglais';
+      if (code === 'R504') rest = 'Projet Personnel et Professionnel';
+      if (code === 'SAE501') rest = 'Dev web ou dispositif interactif';
+      return { code, name: rest || 'Cours', key: `${code} - ${rest || 'Cours'}` };
+    }
+
+    if (/^PORTFOLIO S5/i.test(t) || (/^PORTFOLIO/i.test(t) && !t.includes('S6'))) return { code: 'PORTFOLIO', name: 'Portfolio S5', key: 'Portfolio S5' };
+    if (/^Démarche Portfolio/i.test(t) || t.includes('Portfolio S6')) return { code: 'PORTFOLIO', name: 'Portfolio S6', key: 'Portfolio S6' };
+    if (/^Adaptation de Parcours/i.test(t)) return { code: 'ADAPT', name: 'Adaptation de Parcours S5', key: 'Adaptation de Parcours S5' };
+    if (/^Plage projet/i.test(t)) return { code: 'PROJET', name: 'Plage Projet', key: 'Plage Projet' };
+    if (/^Jour de révision/i.test(t)) return { code: 'RÉVISION', name: 'Jours de révision', key: 'Jours de révision' };
+    if (/^Soutenance/i.test(t)) return { code: 'SOUTENANCE', name: 'Soutenances', key: 'Soutenances' };
+    if (/^JPO/i.test(t)) return { code: 'JPO', name: 'Journée Portes Ouvertes (JPO)', key: 'Journée Portes Ouvertes (JPO)' };
+    if (/^Comité de pilotage/i.test(t)) return { code: 'COPIL', name: 'Comité de pilotage', key: 'Comité de pilotage' };
+    if (/^Nuit de l'info/i.test(t)) return { code: 'EVENT', name: "Nuit de l'info 2026", key: "Nuit de l'info 2026" };
+
+    return { code: 'AUTRE', name: t, key: t };
+  }
+
+  function calculateSubjectsData() {
+    const now = new Date();
+    // Extraire uniquement les cours d'école
+    const courseEvents = state.events.filter(ev => ev.category === 'cours' || ev.isSchool);
+
+    const map = new Map();
+
+    courseEvents.forEach(ev => {
+      const info = getSubjectInfo(ev.title);
+      const s = parseEventDate(ev.start);
+      const e = parseEventDate(ev.end);
+      if (!s || !e) return;
+
+      const durMin = Math.max(0, (e.getTime() - s.getTime()) / 60000);
+      const isDone = (e <= now);
+      const isUpcoming = (s > now);
+      const isInProgress = (s <= now && e > now);
+
+      if (!map.has(info.key)) {
+        map.set(info.key, {
+          code: info.code,
+          name: info.name,
+          key: info.key,
+          totalMinutes: 0,
+          doneMinutes: 0,
+          remainingMinutes: 0,
+          totalCount: 0,
+          doneCount: 0,
+          remainingCount: 0,
+          sessions: [],
+          nextSession: null
+        });
+      }
+
+      const sub = map.get(info.key);
+      sub.totalMinutes += durMin;
+      sub.totalCount += 1;
+
+      if (isDone) {
+        sub.doneMinutes += durMin;
+        sub.doneCount += 1;
+      } else if (isInProgress) {
+        const donePart = Math.max(0, (now.getTime() - s.getTime()) / 60000);
+        sub.doneMinutes += donePart;
+        sub.remainingMinutes += (durMin - donePart);
+        sub.remainingCount += 1;
+      } else {
+        sub.remainingMinutes += durMin;
+        sub.remainingCount += 1;
+      }
+
+      sub.sessions.push({
+        id: ev.id,
+        title: ev.title,
+        fullTitle: ev.fullTitle || ev.title,
+        start: s,
+        end: e,
+        location: ev.location,
+        teacher: ev.teacher,
+        group: ev.group,
+        isDone: isDone,
+        isUpcoming: isUpcoming,
+        isInProgress: isInProgress
+      });
+    });
+
+    const subjects = [...map.values()].map(sub => {
+      // Trier les séances par date chronologique
+      sub.sessions.sort((a, b) => a.start - b.start);
+      sub.nextSession = sub.sessions.find(s => s.start > now || s.isInProgress) || null;
+
+      const totalHours = Math.round((sub.totalMinutes / 60) * 10) / 10;
+      const doneHours = Math.round((sub.doneMinutes / 60) * 10) / 10;
+      const remainingHours = Math.round((sub.remainingMinutes / 60) * 10) / 10;
+      const pct = totalHours > 0 ? Math.min(100, Math.round((doneHours / totalHours) * 100)) : 0;
+
+      let status = 'upcoming';
+      if (pct >= 100 || sub.remainingCount === 0) {
+        status = 'completed';
+      } else if (doneHours > 0 || sub.sessions.some(s => s.isInProgress)) {
+        status = 'in_progress';
+      }
+
+      return {
+        ...sub,
+        totalHours,
+        doneHours,
+        remainingHours,
+        pct,
+        status
+      };
+    });
+
+    // Trier par volume horaire total décroissant
+    subjects.sort((a, b) => b.totalHours - a.totalHours);
+
+    // Métriques globales
+    let globalTotalMin = 0;
+    let globalDoneMin = 0;
+    let globalRemainingMin = 0;
+    let globalTotalSessions = 0;
+    let globalDoneSessions = 0;
+    let globalRemainingSessions = 0;
+
+    subjects.forEach(s => {
+      globalTotalMin += s.totalMinutes;
+      globalDoneMin += s.doneMinutes;
+      globalRemainingMin += s.remainingMinutes;
+      globalTotalSessions += s.totalCount;
+      globalDoneSessions += s.doneCount;
+      globalRemainingSessions += s.remainingCount;
+    });
+
+    const globalTotalHours = Math.round((globalTotalMin / 60) * 10) / 10;
+    const globalDoneHours = Math.round((globalDoneMin / 60) * 10) / 10;
+    const globalRemainingHours = Math.round((globalRemainingMin / 60) * 10) / 10;
+    const globalPct = globalTotalHours > 0 ? Math.min(100, Math.round((globalDoneHours / globalTotalHours) * 100)) : 0;
+
+    return {
+      subjects,
+      global: {
+        totalHours: globalTotalHours,
+        doneHours: globalDoneHours,
+        remainingHours: globalRemainingHours,
+        pct: globalPct,
+        totalSessions: globalTotalSessions,
+        doneSessions: globalDoneSessions,
+        remainingSessions: globalRemainingSessions,
+        modulesCount: subjects.length
+      }
+    };
+  }
+
+  function renderSubjectsModal() {
+    const data = calculateSubjectsData();
+    const g = data.global;
+
+    // Mise à jour des KPI globaux
+    const doneEl = document.getElementById('kpiDoneHours');
+    const donePctEl = document.getElementById('kpiDonePct');
+    const doneSubEl = document.getElementById('kpiDoneSessions');
+    if (doneEl) doneEl.textContent = `${g.doneHours} h`;
+    if (donePctEl) donePctEl.textContent = `${g.pct}%`;
+    if (doneSubEl) doneSubEl.textContent = `${g.doneSessions} séances passées`;
+
+    const remEl = document.getElementById('kpiRemainingHours');
+    const remPctEl = document.getElementById('kpiRemainingPct');
+    const remSubEl = document.getElementById('kpiRemainingSessions');
+    if (remEl) remEl.textContent = `${g.remainingHours} h`;
+    if (remPctEl) remPctEl.textContent = `${100 - g.pct}%`;
+    if (remSubEl) remSubEl.textContent = `${g.remainingSessions} séances à venir`;
+
+    const totEl = document.getElementById('kpiTotalHours');
+    const modCountEl = document.getElementById('kpiModulesCount');
+    const totSubEl = document.getElementById('kpiTotalSessions');
+    if (totEl) totEl.textContent = `${g.totalHours} h`;
+    if (modCountEl) modCountEl.textContent = `${g.modulesCount} matières`;
+    if (totSubEl) totSubEl.textContent = `${g.totalSessions} séances au semestre`;
+
+    // Barre de progression globale
+    const globPctEl = document.getElementById('globalProgressPct');
+    const globFillEl = document.getElementById('globalProgressFill');
+    if (globPctEl) globPctEl.textContent = `${g.pct}%`;
+    if (globFillEl) globFillEl.style.width = `${g.pct}%`;
+
+    // Compteurs des chips de filtre
+    const inProgressCount = data.subjects.filter(s => s.status === 'in_progress').length;
+    const completedCount = data.subjects.filter(s => s.status === 'completed').length;
+    const upcomingCount = data.subjects.filter(s => s.status === 'upcoming').length;
+
+    const cntAll = document.getElementById('subjCountAll');
+    const cntInProg = document.getElementById('subjCountInProgress');
+    const cntComp = document.getElementById('subjCountCompleted');
+    const cntUp = document.getElementById('subjCountUpcoming');
+
+    if (cntAll) cntAll.textContent = data.subjects.length;
+    if (cntInProg) cntInProg.textContent = inProgressCount;
+    if (cntComp) cntComp.textContent = completedCount;
+    if (cntUp) cntUp.textContent = upcomingCount;
+
+    // Filtrage de la liste
+    const container = document.getElementById('subjectsListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const query = currentSubjectSearchQuery.toLowerCase().trim();
+
+    const filtered = data.subjects.filter(sub => {
+      // Filtre de statut
+      if (currentSubjectFilter === 'in_progress' && sub.status !== 'in_progress') return false;
+      if (currentSubjectFilter === 'completed' && sub.status !== 'completed') return false;
+      if (currentSubjectFilter === 'upcoming' && sub.status !== 'upcoming') return false;
+
+      // Filtre de recherche
+      if (query) {
+        const matchCode = sub.code.toLowerCase().includes(query);
+        const matchName = sub.name.toLowerCase().includes(query);
+        const matchTeacher = sub.sessions.some(s => s.teacher && s.teacher.toLowerCase().includes(query));
+        const matchRoom = sub.sessions.some(s => s.location && s.location.toLowerCase().includes(query));
+        if (!matchCode && !matchName && !matchTeacher && !matchRoom) return false;
+      }
+
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-subjects-message">
+          <p>Aucune matière ne correspond à votre recherche ou filtre.</p>
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(sub => {
+      const card = createSubjectCard(sub);
+      container.appendChild(card);
+    });
+  }
+
+  function createSubjectCard(sub) {
+    const card = document.createElement('div');
+    card.className = `subject-card status-${sub.status}`;
+
+    let statusText = 'À venir';
+    if (sub.status === 'completed') statusText = 'Terminée';
+    else if (sub.status === 'in_progress') statusText = 'En cours';
+
+    let nextSessionText = 'Toutes les séances ont été effectuées';
+    if (sub.nextSession) {
+      const d = sub.nextSession.start;
+      const dayName = DAY_NAMES[d.getDay() === 0 ? 6 : d.getDay() - 1];
+      const dateStr = `${dayName} ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
+      const timeStr = `${formatTime(sub.nextSession.start)} - ${formatTime(sub.nextSession.end)}`;
+      const locStr = sub.nextSession.location ? ` (${escapeHtml(sub.nextSession.location)})` : '';
+      nextSessionText = `Prochaine séance : <strong>${dateStr} à ${timeStr}</strong>${locStr}`;
+    }
+
+    card.innerHTML = `
+      <div class="subject-card-header">
+        <div class="subject-title-group">
+          <span class="subject-code-tag">${escapeHtml(sub.code)}</span>
+          <h4 class="subject-name">${escapeHtml(sub.name)}</h4>
+        </div>
+        <span class="subject-status-pill ${sub.status}">${statusText}</span>
+      </div>
+
+      <div class="subject-progress-row">
+        <div class="subject-progress-bar">
+          <div class="subject-progress-fill ${sub.status === 'completed' ? 'completed' : ''}" style="width: ${sub.pct}%;"></div>
+        </div>
+        <span class="subject-pct-label">${sub.pct}%</span>
+      </div>
+
+      <div class="subject-metrics-grid">
+        <div class="subj-metric">
+          <span class="sm-label">Effectué</span>
+          <span class="sm-val highlight">${sub.doneHours} h <small>(${sub.doneCount} séa.)</small></span>
+        </div>
+        <div class="subj-metric">
+          <span class="sm-label">Restant</span>
+          <span class="sm-val">${sub.remainingHours} h <small>(${sub.remainingCount} séa.)</small></span>
+        </div>
+        <div class="subj-metric">
+          <span class="sm-label">Total matière</span>
+          <span class="sm-val total">${sub.totalHours} h <small>(${sub.totalCount} séa.)</small></span>
+        </div>
+      </div>
+
+      <div class="subject-next-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>${nextSessionText}</span>
+      </div>
+
+      <button type="button" class="btn-toggle-sessions">
+        <span>Voir les ${sub.sessions.length} séances</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <div class="subject-sessions-list" style="display: none;">
+        ${sub.sessions.map(s => {
+          const d = s.start;
+          const dayName = DAY_NAMES[d.getDay() === 0 ? 6 : d.getDay() - 1].slice(0, 3);
+          const dateStr = `${dayName}. ${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0, 4)}.`;
+          const timeStr = `${formatTime(s.start)} - ${formatTime(s.end)}`;
+          const statusBadge = s.isDone
+            ? '<span class="session-badge done">Effectué</span>'
+            : (s.isInProgress ? '<span class="session-badge upcoming">En cours</span>' : '<span class="session-badge upcoming">À venir</span>');
+          const metaTeacher = s.teacher ? ` • ${escapeHtml(s.teacher)}` : '';
+          const metaRoom = s.location ? `<span class="session-room">${escapeHtml(s.location)}</span>` : '';
+
+          return `
+            <div class="session-item ${s.isDone ? 'done' : 'upcoming'}">
+              <div class="session-left">
+                ${statusBadge}
+                <span class="session-date">${dateStr}</span>
+                <span class="session-time">${timeStr}</span>
+              </div>
+              <div class="session-right">
+                ${metaRoom}
+                ${metaTeacher}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    // Gestion de l'accordéon des séances
+    const toggleBtn = card.querySelector('.btn-toggle-sessions');
+    const sessionsList = card.querySelector('.subject-sessions-list');
+    if (toggleBtn && sessionsList) {
+      toggleBtn.addEventListener('click', () => {
+        const isHidden = sessionsList.style.display === 'none';
+        sessionsList.style.display = isHidden ? 'flex' : 'none';
+        toggleBtn.classList.toggle('expanded', isHidden);
+        const span = toggleBtn.querySelector('span');
+        if (span) {
+          span.textContent = isHidden ? 'Masquer les séances' : `Voir les ${sub.sessions.length} séances`;
+        }
+      });
+    }
+
+    return card;
+  }
+
+  /* ==========================================================================
+     BILAN DE L'ALTERNANCE & DU TÉLÉTRAVAIL (ENTREPRISE & TT)
+     ========================================================================== */
+  function calculateAlternanceData() {
+    const now = new Date();
+    const altEvents = state.events.filter(ev => ev.category === 'alternance');
+
+    // Grouper les shifts par semaine (du Lundi au Vendredi)
+    const weeksMap = new Map();
+
+    altEvents.forEach(ev => {
+      const s = parseEventDate(ev.start);
+      const e = parseEventDate(ev.end);
+      if (!s || !e) return;
+
+      const mon = getMonday(s);
+      const monStr = formatYMD(mon);
+      const durMin = Math.max(0, (e.getTime() - s.getTime()) / 60000);
+      const isDone = (e <= now);
+      const isInProgress = (s <= now && e > now);
+
+      if (!weeksMap.has(monStr)) {
+        const fri = addDays(mon, 4);
+        const weekNum = getISOWeekNumber(mon);
+        const monD = mon.getDate();
+        const monM = MONTH_NAMES[mon.getMonth()];
+        const friD = fri.getDate();
+        const friM = MONTH_NAMES[fri.getMonth()];
+        const year = fri.getFullYear();
+
+        const rangeStr = (monM === friM)
+          ? `Du ${monD} au ${friD} ${friM} ${year}`
+          : `Du ${monD} ${monM} au ${friD} ${friM} ${year}`;
+
+        weeksMap.set(monStr, {
+          monday: mon,
+          monStr,
+          weekNum,
+          rangeStr,
+          totalMinutes: 0,
+          doneMinutes: 0,
+          remainingMinutes: 0,
+          onSiteMinutes: 0,
+          ttMinutes: 0,
+          shifts: []
+        });
+      }
+
+      const w = weeksMap.get(monStr);
+      w.totalMinutes += durMin;
+
+      if (ev.isTT) {
+        w.ttMinutes += durMin;
+      } else {
+        w.onSiteMinutes += durMin;
+      }
+
+      if (isDone) {
+        w.doneMinutes += durMin;
+      } else if (isInProgress) {
+        const donePart = Math.max(0, (now.getTime() - s.getTime()) / 60000);
+        w.doneMinutes += donePart;
+        w.remainingMinutes += (durMin - donePart);
+      } else {
+        w.remainingMinutes += durMin;
+      }
+
+      w.shifts.push({
+        id: ev.id,
+        title: ev.title,
+        start: s,
+        end: e,
+        isTT: Boolean(ev.isTT),
+        isDone: isDone,
+        isInProgress: isInProgress,
+        location: ev.location
+      });
+    });
+
+    const weeks = [...weeksMap.values()].map(w => {
+      w.shifts.sort((a, b) => a.start - b.start);
+      const totalHours = Math.round((w.totalMinutes / 60) * 10) / 10;
+      const doneHours = Math.round((w.doneMinutes / 60) * 10) / 10;
+      const remainingHours = Math.round((w.remainingMinutes / 60) * 10) / 10;
+      const pct = totalHours > 0 ? Math.min(100, Math.round((doneHours / totalHours) * 100)) : 0;
+
+      let status = 'upcoming';
+      if (pct >= 100) status = 'completed';
+      else if (doneHours > 0) status = 'in_progress';
+
+      const onSiteHours = Math.round((w.onSiteMinutes / 60) * 10) / 10;
+      const ttHours = Math.round((w.ttMinutes / 60) * 10) / 10;
+
+      return {
+        ...w,
+        totalHours,
+        doneHours,
+        remainingHours,
+        onSiteHours,
+        ttHours,
+        pct,
+        status
+      };
+    });
+
+    weeks.sort((a, b) => a.monday - b.monday);
+
+    let totalAltMin = 0;
+    let doneAltMin = 0;
+    let remainingAltMin = 0;
+    let totalOnSiteMin = 0;
+    let doneOnSiteMin = 0;
+    let totalTtMin = 0;
+    let doneTtMin = 0;
+
+    weeks.forEach(w => {
+      totalAltMin += w.totalMinutes;
+      doneAltMin += w.doneMinutes;
+      remainingAltMin += w.remainingMinutes;
+      totalOnSiteMin += w.onSiteMinutes;
+      totalTtMin += w.ttMinutes;
+
+      w.shifts.forEach(s => {
+        const dur = (s.end - s.start) / 60000;
+        if (s.isDone) {
+          if (s.isTT) doneTtMin += dur;
+          else doneOnSiteMin += dur;
+        }
+      });
+    });
+
+    const totalHours = Math.round((totalAltMin / 60) * 10) / 10;
+    const doneHours = Math.round((doneAltMin / 60) * 10) / 10;
+    const remainingHours = Math.round((remainingAltMin / 60) * 10) / 10;
+    const pct = totalHours > 0 ? Math.min(100, Math.round((doneHours / totalHours) * 100)) : 0;
+
+    const onSiteTotalHours = Math.round((totalOnSiteMin / 60) * 10) / 10;
+    const onSiteDoneHours = Math.round((doneOnSiteMin / 60) * 10) / 10;
+    const onSiteRemainingHours = Math.max(0, onSiteTotalHours - onSiteDoneHours);
+    const onSitePct = onSiteTotalHours > 0 ? Math.round((onSiteDoneHours / onSiteTotalHours) * 100) : 0;
+
+    const ttTotalHours = Math.round((totalTtMin / 60) * 10) / 10;
+    const ttDoneHours = Math.round((doneTtMin / 60) * 10) / 10;
+    const ttRemainingHours = Math.max(0, ttTotalHours - ttDoneHours);
+    const ttPct = ttTotalHours > 0 ? Math.round((ttDoneHours / ttTotalHours) * 100) : 0;
+
+    const completedWeeksCount = weeks.filter(w => w.status === 'completed').length;
+    const inProgressWeeksCount = weeks.filter(w => w.status === 'in_progress').length;
+    const upcomingWeeksCount = weeks.filter(w => w.status === 'upcoming').length;
+
+    return {
+      weeks,
+      global: {
+        totalHours,
+        doneHours,
+        remainingHours,
+        pct,
+        totalWeeks: weeks.length,
+        completedWeeks: completedWeeksCount,
+        inProgressWeeks: inProgressWeeksCount,
+        upcomingWeeks: upcomingWeeksCount,
+        onSite: {
+          total: onSiteTotalHours,
+          done: onSiteDoneHours,
+          remaining: onSiteRemainingHours,
+          pct: onSitePct
+        },
+        tt: {
+          total: ttTotalHours,
+          done: ttDoneHours,
+          remaining: ttRemainingHours,
+          pct: ttPct
+        }
+      }
+    };
+  }
+
+  function renderAlternanceBilan() {
+    const data = calculateAlternanceData();
+    const g = data.global;
+
+    // KPI Summary
+    const doneEl = document.getElementById('kpiAltDoneHours');
+    const donePctEl = document.getElementById('kpiAltDonePct');
+    const doneWeeksEl = document.getElementById('kpiAltDoneWeeks');
+    if (doneEl) doneEl.textContent = `${g.doneHours} h`;
+    if (donePctEl) donePctEl.textContent = `${g.pct}%`;
+    if (doneWeeksEl) doneWeeksEl.textContent = `${g.completedWeeks} semaines faites`;
+
+    const remEl = document.getElementById('kpiAltRemainingHours');
+    const remPctEl = document.getElementById('kpiAltRemainingPct');
+    const remWeeksEl = document.getElementById('kpiAltRemainingWeeks');
+    if (remEl) remEl.textContent = `${g.remainingHours} h`;
+    if (remPctEl) remPctEl.textContent = `${100 - g.pct}%`;
+    if (remWeeksEl) remWeeksEl.textContent = `${g.remainingWeeks} semaines à venir`;
+
+    const totEl = document.getElementById('kpiAltTotalHours');
+    const totWeeksEl = document.getElementById('kpiAltTotalWeeks');
+    if (totEl) totEl.textContent = `${g.totalHours} h`;
+    if (totWeeksEl) totWeeksEl.textContent = `${g.totalWeeks} semaines`;
+
+    // Pôles
+    const onSiteHoursEl = document.getElementById('kpiAltOnSiteHours');
+    const onSiteFill = document.getElementById('poleOnSiteFill');
+    const onSiteSub = document.getElementById('poleOnSiteSub');
+    const onSitePct = document.getElementById('poleOnSitePct');
+    if (onSiteHoursEl) onSiteHoursEl.textContent = `${g.onSite.total} h`;
+    if (onSiteFill) onSiteFill.style.width = `${g.onSite.pct}%`;
+    if (onSiteSub) onSiteSub.textContent = `${g.onSite.done}h faites • ${g.onSite.remaining}h restantes`;
+    if (onSitePct) onSitePct.textContent = `${g.onSite.pct}%`;
+
+    const ttHoursEl = document.getElementById('kpiAltTtHours');
+    const ttFill = document.getElementById('poleTtFill');
+    const ttSub = document.getElementById('poleTtSub');
+    const ttPct = document.getElementById('poleTtPct');
+    if (ttHoursEl) ttHoursEl.textContent = `${g.tt.total} h`;
+    if (ttFill) ttFill.style.width = `${g.tt.pct}%`;
+    if (ttSub) ttSub.textContent = `${g.tt.done}h faites • ${g.tt.remaining}h restantes`;
+    if (ttPct) ttPct.textContent = `${g.tt.pct}%`;
+
+    // Barre d'avancement globale
+    const globPct = document.getElementById('globalAltProgressPct');
+    const globFill = document.getElementById('globalAltProgressFill');
+    if (globPct) globPct.textContent = `${g.pct}%`;
+    if (globFill) globFill.style.width = `${g.pct}%`;
+
+    // Filtres
+    const cntAll = document.getElementById('altCountAll');
+    const cntInProg = document.getElementById('altCountInProgress');
+    const cntComp = document.getElementById('altCountCompleted');
+    const cntUp = document.getElementById('altCountUpcoming');
+    if (cntAll) cntAll.textContent = g.totalWeeks;
+    if (cntInProg) cntInProg.textContent = g.inProgressWeeks;
+    if (cntComp) cntComp.textContent = g.completedWeeks;
+    if (cntUp) cntUp.textContent = g.upcomingWeeks;
+
+    const container = document.getElementById('alternanceListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const query = currentAltSearchQuery.toLowerCase().trim();
+
+    const filtered = data.weeks.filter(w => {
+      if (currentAltFilter === 'in_progress' && w.status !== 'in_progress') return false;
+      if (currentAltFilter === 'completed' && w.status !== 'completed') return false;
+      if (currentAltFilter === 'upcoming' && w.status !== 'upcoming') return false;
+
+      if (query) {
+        const matchNum = `s${w.weekNum}`.includes(query) || `semaine ${w.weekNum}`.includes(query);
+        const matchRange = w.rangeStr.toLowerCase().includes(query);
+        if (!matchNum && !matchRange) return false;
+      }
+
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-subjects-message">
+          <p>Aucune semaine d'alternance ne correspond à votre filtre.</p>
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(w => {
+      const card = createAlternanceWeekCard(w);
+      container.appendChild(card);
+    });
+  }
+
+  function createAlternanceWeekCard(w) {
+    const card = document.createElement('div');
+    card.className = `subject-card status-${w.status}`;
+
+    let statusText = 'À venir';
+    if (w.status === 'completed') statusText = 'Effectuée';
+    else if (w.status === 'in_progress') statusText = 'En cours';
+
+    card.innerHTML = `
+      <div class="subject-card-header">
+        <div class="subject-title-group">
+          <span class="subject-code-tag" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">Sem. ${w.weekNum}</span>
+          <h4 class="subject-name">${w.rangeStr}</h4>
+        </div>
+        <span class="subject-status-pill ${w.status}">${statusText}</span>
+      </div>
+
+      <div class="subject-progress-row">
+        <div class="subject-progress-bar">
+          <div class="subject-progress-fill ${w.status === 'completed' ? 'completed' : ''}" style="width: ${w.pct}%; background: linear-gradient(90deg, #1d4ed8, #3b82f6);"></div>
+        </div>
+        <span class="subject-pct-label">${w.pct}%</span>
+      </div>
+
+      <div class="subject-metrics-grid">
+        <div class="subj-metric">
+          <span class="sm-label">Effectué</span>
+          <span class="sm-val highlight">${w.doneHours} h</span>
+        </div>
+        <div class="subj-metric">
+          <span class="sm-label">Restant</span>
+          <span class="sm-val">${w.remainingHours} h</span>
+        </div>
+        <div class="subj-metric">
+          <span class="sm-label">Volume total</span>
+          <span class="sm-val total">${w.totalHours} h <small>(${w.onSiteHours}h site • ${w.ttHours}h TT)</small></span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-toggle-sessions">
+        <span>Voir les créneaux (${w.shifts.length})</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <div class="subject-sessions-list" style="display: none;">
+        ${w.shifts.map(s => {
+          const d = s.start;
+          const dayName = DAY_NAMES[d.getDay() === 0 ? 6 : d.getDay() - 1];
+          const dateStr = `${dayName} ${d.getDate()} ${MONTH_NAMES[d.getMonth()].slice(0, 4)}.`;
+          const timeStr = `${formatTime(s.start)} - ${formatTime(s.end)}`;
+          const statusBadge = s.isDone
+            ? '<span class="session-badge done">Effectué</span>'
+            : (s.isInProgress ? '<span class="session-badge upcoming">En cours</span>' : '<span class="session-badge upcoming">À venir</span>');
+          const typeBadge = s.isTT
+            ? '<span class="session-room" style="color: #2dd4bf;">Télétravail</span>'
+            : '<span class="session-room" style="color: #60a5fa;">Entreprise</span>';
+
+          return `
+            <div class="session-item ${s.isDone ? 'done' : 'upcoming'}">
+              <div class="session-left">
+                ${statusBadge}
+                <span class="session-date">${dateStr}</span>
+                <span class="session-time">${timeStr}</span>
+              </div>
+              <div class="session-right">
+                ${typeBadge}
+                <span style="font-size: 11px;">${escapeHtml(s.location || '')}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    const toggleBtn = card.querySelector('.btn-toggle-sessions');
+    const sessionsList = card.querySelector('.subject-sessions-list');
+    if (toggleBtn && sessionsList) {
+      toggleBtn.addEventListener('click', () => {
+        const isHidden = sessionsList.style.display === 'none';
+        sessionsList.style.display = isHidden ? 'flex' : 'none';
+        toggleBtn.classList.toggle('expanded', isHidden);
+        const span = toggleBtn.querySelector('span');
+        if (span) {
+          span.textContent = isHidden ? 'Masquer les créneaux' : `Voir les créneaux (${w.shifts.length})`;
+        }
+      });
+    }
+
+    return card;
+  }
+
+  function renderGlobalBilan() {
+    const courseData = calculateSubjectsData().global;
+    const altData = calculateAlternanceData().global;
+
+    const grandTotal = Math.round((courseData.totalHours + altData.totalHours) * 10) / 10;
+    const grandDone = Math.round((courseData.doneHours + altData.doneHours) * 10) / 10;
+    const grandRemaining = Math.max(0, Math.round((grandTotal - grandDone) * 10) / 10);
+    const grandPct = grandTotal > 0 ? Math.round((grandDone / grandTotal) * 100) : 0;
+
+    const coursRatio = grandTotal > 0 ? Math.round((courseData.totalHours / grandTotal) * 100) : 0;
+    const altRatio = Math.max(0, 100 - coursRatio);
+
+    const gTotalEl = document.getElementById('grandTotalHours');
+    if (gTotalEl) gTotalEl.textContent = `${grandTotal} h`;
+
+    const cValEl = document.getElementById('synthCoursVal');
+    const cMeterEl = document.getElementById('synthCoursMeter');
+    if (cValEl) cValEl.textContent = `${courseData.totalHours} h (${coursRatio}%)`;
+    if (cMeterEl) cMeterEl.style.width = `${coursRatio}%`;
+
+    const aValEl = document.getElementById('synthAltVal');
+    const aMeterEl = document.getElementById('synthAltMeter');
+    if (aValEl) aValEl.textContent = `${altData.totalHours} h (${altRatio}%)`;
+    if (aMeterEl) aMeterEl.style.width = `${altRatio}%`;
+
+    const gDoneEl = document.getElementById('synthGrandDoneHours');
+    const gDonePctEl = document.getElementById('synthGrandDonePct');
+    if (gDoneEl) gDoneEl.textContent = `${grandDone} h`;
+    if (gDonePctEl) gDonePctEl.textContent = `${grandPct}% de l'année réalisé`;
+
+    const gRemEl = document.getElementById('synthGrandRemainingHours');
+    const gRemPctEl = document.getElementById('synthGrandRemainingPct');
+    if (gRemEl) gRemEl.textContent = `${grandRemaining} h`;
+    if (gRemPctEl) gRemPctEl.textContent = `${100 - grandPct}% restant`;
   }
 
   /* ==========================================================================
@@ -1254,6 +2172,81 @@
       deleteEvent(id);
     });
 
+    // Modale Bilan des Matières & Alternance
+    document.getElementById('openSubjectsModalBtn')?.addEventListener('click', () => openSubjectsModal());
+    document.getElementById('closeSubjectsModalBtn')?.addEventListener('click', closeSubjectsModal);
+    document.getElementById('closeSubjectsFooterBtn')?.addEventListener('click', closeSubjectsModal);
+
+    // Onglets du Bilan (Cours / Alternance / Synthèse)
+    document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        if (tab) switchBilanTab(tab);
+      });
+    });
+
+    // Filtres & Recherche de l'onglet Cours
+    const subjSearchInput = document.getElementById('subjectsSearchInput');
+    const clearSearchBtn = document.getElementById('clearSubjectSearchBtn');
+    if (subjSearchInput) {
+      subjSearchInput.addEventListener('input', (e) => {
+        currentSubjectSearchQuery = e.target.value;
+        if (clearSearchBtn) {
+          clearSearchBtn.style.display = currentSubjectSearchQuery ? 'block' : 'none';
+        }
+        renderSubjectsModal();
+      });
+    }
+    if (clearSearchBtn && subjSearchInput) {
+      clearSearchBtn.addEventListener('click', () => {
+        subjSearchInput.value = '';
+        currentSubjectSearchQuery = '';
+        clearSearchBtn.style.display = 'none';
+        renderSubjectsModal();
+        subjSearchInput.focus();
+      });
+    }
+
+    document.querySelectorAll('[data-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter]').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        currentSubjectFilter = chip.getAttribute('data-filter') || 'all';
+        renderSubjectsModal();
+      });
+    });
+
+    // Filtres & Recherche de l'onglet Alternance
+    const altSearchInput = document.getElementById('altSearchInput');
+    const clearAltSearchBtn = document.getElementById('clearAltSearchBtn');
+    if (altSearchInput) {
+      altSearchInput.addEventListener('input', (e) => {
+        currentAltSearchQuery = e.target.value;
+        if (clearAltSearchBtn) {
+          clearAltSearchBtn.style.display = currentAltSearchQuery ? 'block' : 'none';
+        }
+        renderAlternanceBilan();
+      });
+    }
+    if (clearAltSearchBtn && altSearchInput) {
+      clearAltSearchBtn.addEventListener('click', () => {
+        altSearchInput.value = '';
+        currentAltSearchQuery = '';
+        clearAltSearchBtn.style.display = 'none';
+        renderAlternanceBilan();
+        altSearchInput.focus();
+      });
+    }
+
+    document.querySelectorAll('[data-alt-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('[data-alt-filter]').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        currentAltFilter = chip.getAttribute('data-alt-filter') || 'all';
+        renderAlternanceBilan();
+      });
+    });
+
     // Modale Détails
     document.getElementById('closeDetailModalBtn')?.addEventListener('click', closeDetailModal);
     document.getElementById('detailCloseBtn')?.addEventListener('click', closeDetailModal);
@@ -1361,6 +2354,7 @@
         closeEventModal();
         closeDetailModal();
         closeImportModal();
+        closeSubjectsModal();
       }
     });
   }

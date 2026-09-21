@@ -21,7 +21,16 @@ const server = http.createServer((req, res) => {
   let reqPath = req.url.split('?')[0];
   if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
 
-  const filePath = path.join(ROOT_DIR, reqPath);
+  const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
+  const filePath = path.join(ROOT_DIR, safePath);
+
+  // Protection contre le Path Traversal
+  if (!filePath.startsWith(ROOT_DIR)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('403 Accès interdit');
+    return;
+  }
+
   const ext = path.extname(filePath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
